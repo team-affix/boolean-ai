@@ -1,7 +1,10 @@
-#include "digital-ai/generalize.h"
+#include "boolean-ai/generalize.h"
 #include <iostream>
 #include <assert.h>
 #include <numeric>
+#include "boolean-ai/cache.h"
+#include <fstream>
+#include "cereal/archives/binary.hpp"
 
 void test_literal_product_equivalence(
 
@@ -564,6 +567,98 @@ void test_generalize_multi_output(
 
 }
 
+void test_temporal_cache(
+
+)
+{
+    namespace fs = std::filesystem;
+
+    std::filesystem::path l_raw_example_0_path = std::filesystem::absolute("test_disk_lookup_0.bin");
+    std::filesystem::path l_raw_example_1_path = std::filesystem::absolute("test_disk_lookup_1.bin");
+    std::filesystem::path l_raw_example_2_path = std::filesystem::absolute("test_disk_lookup_2.bin");
+
+    digital_ai::raw_example l_raw_example_0({{1, 0, 0, 1}, {0, 1, 1}});
+    digital_ai::raw_example l_raw_example_1({{1, 1, 1, 1}, {0, 0, 0}});
+    digital_ai::raw_example l_raw_example_2({{1, 1, 0, 1}, {0, 0, 1}});
+
+    {
+        // Serialize the first raw example
+        std::ofstream l_ofs(l_raw_example_0_path, std::ios::binary);
+        cereal::BinaryOutputArchive l_output_archive(l_ofs);
+        l_output_archive(l_raw_example_0);
+    }
+
+    {
+        // Serialize the second raw example
+        std::ofstream l_ofs(l_raw_example_1_path, std::ios::binary);
+        cereal::BinaryOutputArchive l_output_archive(l_ofs);
+        l_output_archive(l_raw_example_1);
+    }
+
+    {
+        // Serialize the third raw example
+        std::ofstream l_ofs(l_raw_example_2_path, std::ios::binary);
+        cereal::BinaryOutputArchive l_output_archive(l_ofs);
+        l_output_archive(l_raw_example_2);
+    }
+
+    auto l_perform_disk_lookup = [&](
+            const std::filesystem::path& a_file_path
+        )
+        {
+            // Look up raw example set on disk.
+            digital_ai::raw_example l_result;
+
+            if (!fs::exists(a_file_path))
+                throw std::runtime_error("Error: could not find file.");
+
+            std::ifstream l_ifs(a_file_path.c_str(), std::ios::binary);
+            
+            cereal::BinaryInputArchive l_archive(l_ifs);
+
+            l_archive(l_result);
+
+            return l_result;
+
+        };
+        
+    digital_ai::temporal_cache<std::filesystem::path, digital_ai::raw_example> l_raw_example_cache(
+        l_perform_disk_lookup,
+        2
+    );
+
+    digital_ai::raw_example l_raw_example_0_recovered_0 = l_raw_example_cache.evaluate(l_raw_example_0_path);
+
+    fs::remove(l_raw_example_0_path);
+
+    // The only way this should be able to recover the data is from cache,
+    // since the file has been removed from disk.
+    digital_ai::raw_example l_raw_example_0_recovered_1 = l_raw_example_cache.evaluate(l_raw_example_0_path);
+
+    assert(l_raw_example_0 == l_raw_example_0_recovered_0 && l_raw_example_0 == l_raw_example_0_recovered_1);
+
+    digital_ai::raw_example l_raw_example_1_recovered = l_raw_example_cache.evaluate(l_raw_example_1_path);
+
+    assert(l_raw_example_1 == l_raw_example_1_recovered);
+
+    // This will be the third call to evaluate the cache. The cache is size 2.
+    // This means that the first raw example should no longer be in the cache.
+    digital_ai::raw_example l_raw_example_2_recovered = l_raw_example_cache.evaluate(l_raw_example_2_path);
+
+    assert(l_raw_example_2 == l_raw_example_2_recovered);
+
+    try
+    {
+        digital_ai::raw_example l_raw_example_0_recovered_2 = l_raw_example_cache.evaluate(l_raw_example_0_path);
+        
+        // We should not make it to this point.
+        throw std::runtime_error("Error: temporal cache unit test failed.");
+
+    }
+    catch(std::exception) {}
+
+}
+
 void unit_test_main(
 
 )
@@ -573,6 +668,7 @@ void unit_test_main(
     test_get_covering_product();
     test_generalize();
     test_generalize_multi_output();
+    test_temporal_cache();
 }
 
 void add_8_bit_numbers_test(

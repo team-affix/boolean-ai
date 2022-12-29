@@ -4,6 +4,33 @@
 #include <vector>
 #include <stddef.h>
 
+template<typename Archive>
+void save(
+    Archive& a_archive,
+    const std::vector<bool>& a_vector
+)
+{
+    a_archive(a_vector.size());
+    for (int i = 0; i < a_vector.size(); i++)
+        a_archive(a_vector[i]);
+}
+
+template<typename Archive>
+void load(
+    Archive& a_archive,
+    std::vector<bool>& a_vector
+)
+{
+    size_t l_vector_size = 0;
+    a_archive(l_vector_size);
+    for (int i = 0; i < l_vector_size; i++)
+    {
+        bool l_bool = false;
+        a_archive(l_bool);
+        a_vector.push_back(l_bool);
+    }
+}
+
 namespace digital_ai
 {
     /// @brief This struct has a bit string as input and output.
@@ -11,6 +38,20 @@ namespace digital_ai
     {
         std::vector<bool> m_input;
         std::vector<bool> m_output;
+    public:
+        template<class Archive>
+        void serialize(Archive& a_archive)
+        {
+            a_archive(m_input, m_output);
+        }
+        bool operator==(
+            const raw_example& a_raw_example
+        )
+        {
+            return
+                m_input == a_raw_example.m_input &&
+                m_output == a_raw_example.m_output;
+        }
     };
 
     /// @brief This is a bit-string which does not satisfy the function which it is being inputted into.

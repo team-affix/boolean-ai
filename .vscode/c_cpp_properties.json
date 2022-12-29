@@ -4,7 +4,8 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "../"
+                "../",
+                "cereal/include/"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

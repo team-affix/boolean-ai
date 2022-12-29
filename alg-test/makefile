@@ -1,6 +1,6 @@
 SOURCES=$(wildcard *.cpp)
 OBJECTS=$(patsubst %.cpp, %.o, $(SOURCES))
-HEADERS=$(wildcard ../digital-ai/*.h)
+HEADERS=$(wildcard ../boolean-ai/*.h)
 
 CPPFLAGS+=-g
 #CPPFLAGS+=-O2
@@ -8,6 +8,7 @@ CPPFLAGS+=-std=c++20
 CPPFLAGS+=-pthread
 CPPFLAGS+=-I.
 CPPFLAGS+=-I"../"
+CPPFLAGS+=-I"../cereal/include/"
 
 BINARY=main
 
