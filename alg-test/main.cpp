@@ -657,6 +657,9 @@ void test_temporal_cache(
     }
     catch(std::exception) {}
 
+    fs::remove(l_raw_example_1_path);
+    fs::remove(l_raw_example_2_path);
+
 }
 
 void unit_test_main(
