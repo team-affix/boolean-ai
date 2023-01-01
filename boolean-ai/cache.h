@@ -13,91 +13,45 @@ template<typename KEY, typename VALUE>
 class cache
 {
 public:
-    class latent
+    class guarded_value
     {
-    public:
-        class scoped_ref
-        {
-        private:
-            latent& m_latent;
-            VALUE& m_reference;
-
-        public:
-            virtual ~scoped_ref(
-
-            )
-            {
-                m_latent.unlock();
-            }
-
-            scoped_ref(
-                latent& a_latent,
-                VALUE& a_reference
-            ) :
-                m_latent(a_latent),
-                m_reference(a_reference)
-            {
-                
-            }
-            
-            VALUE& operator*(
-
-            )
-            {
-                return m_reference;
-            }
-
-            VALUE* operator->(
-
-            )
-            {
-                return &m_reference;
-            }
-
-        };
-
     private:
-        cache<KEY, VALUE>& m_cache;
-        KEY m_key;
+        cache&     m_cache;
+        const KEY& m_key;
+        VALUE&     m_reference;
 
     public:
-        latent(
-            cache<KEY, VALUE>& a_cache,
-            const KEY& a_key
-        ) :
-            m_cache(a_cache),
-            m_key(a_key)
-        {
-
-        }
-
-        scoped_ref lock(
-
-        )
-        {
-            return scoped_ref(*this, m_cache.lock(m_key));
-        }
-
-        const KEY& key(
-
-        ) const
-        {
-            return m_key;
-        }
-
-        latent& operator=(
-            const latent& a_latent
-        )
-        {
-            m_key = a_latent.m_key;
-        }
-
-    private:
-        void unlock(
+        virtual ~guarded_value(
 
         )
         {
             m_cache.unlock(m_key);
+        }
+
+        guarded_value(
+            cache& a_cache,
+            const KEY& a_key,
+            VALUE& a_reference
+        ) :
+            m_cache(a_cache),
+            m_key(a_key),
+            m_reference(a_reference)
+        {
+            
+        }
+        
+        VALUE& operator*(
+
+        )
+        {
+            return m_reference;
+        }
+
+        VALUE* operator->(
+
+        )
+        {
+            return &m_reference;
         }
 
     };
@@ -136,15 +90,7 @@ public:
 
     }
 
-    latent make_latent(
-        const KEY& a_key
-    )
-    {
-        return latent(*this, a_key);
-    }
-
-private:
-    VALUE& lock(
+    guarded_value get(
         const KEY& a_key
     )
     {
@@ -188,10 +134,11 @@ private:
         // Increments the lock count by 1 for this key.
         m_lock_counts[a_key]++;
 
-        return *l_map_location->second;
+        return guarded_value(*this, l_map_location->first, *l_map_location->second);
 
     }
 
+private:
     void unlock(
         const KEY& a_key
     )
