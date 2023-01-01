@@ -78,6 +78,13 @@ public:
             return scoped_ref(*this, m_cache.lock(m_key));
         }
 
+        const KEY& key(
+
+        ) const
+        {
+            return m_key;
+        }
+
         latent& operator=(
             const latent& a_latent
         )

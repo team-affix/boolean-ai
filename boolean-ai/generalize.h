@@ -2,6 +2,7 @@
 #define GENERALIZE_H
 
 #include "examples.h"
+#include "cache.h"
 #include <assert.h>
 #include <algorithm>
 #include <map>
@@ -382,16 +383,22 @@ namespace digital_ai
     class literal_coverage_tree
     {
     private:
-        std::vector<literal>                            m_covering_literals;
-        std::vector<latent_input>                       m_unprocessed_coverage;
-        size_t                                          m_coverage_size = 0;
-        std::map<literal, size_t>                       m_subcoverage_sizes;
-        std::map<literal, latent_literal_coverage_tree> m_subcoverages;
+        cache<std::filesystem::path, input>&                 m_input_cache;
+        cache<std::filesystem::path, literal_coverage_tree>& m_node_cache;
+        std::vector<literal>                                 m_covering_literals;
+        std::vector<latent_input>                            m_unprocessed_coverage;
+        size_t                                               m_coverage_size = 0;
+        std::map<literal, size_t>                            m_subcoverage_sizes;
+        std::map<literal, latent_literal_coverage_tree>      m_subcoverages;
 
     public:
         literal_coverage_tree(
+            cache<std::filesystem::path, input>& a_input_cache,
+            cache<std::filesystem::path, literal_coverage_tree>& a_node_cache,
             const std::vector<literal>& a_covering_literals = {}
         ) :
+            m_input_cache(a_input_cache),
+            m_node_cache(a_node_cache),
             m_covering_literals(a_covering_literals)
         {
             
@@ -461,6 +468,71 @@ namespace digital_ai
         ) const
         {
             return m_covering_literals;
+        }
+
+        template<typename ARCHIVE>
+        void save(
+            ARCHIVE& a_archive
+        )
+        {
+            a_archive(m_covering_literals);
+            
+            a_archive(m_unprocessed_coverage.size());
+
+            for (int i = 0; i < m_unprocessed_coverage.size(); i++)
+                a_archive(m_unprocessed_coverage[i].key());
+
+            a_archive(m_coverage_size);
+            a_archive(m_subcoverage_sizes);
+
+            a_archive(m_subcoverages.size());
+            
+            for (auto l_it = m_subcoverages.begin(); l_it != m_subcoverages.end(); l_it++)
+            {
+                a_archive(l_it->first);
+                a_archive(l_it->second.key());
+            }
+
+        }
+
+        template<typename ARCHIVE>
+        void load(
+            ARCHIVE& a_archive
+        )
+        {
+            a_archive(m_covering_literals);
+            
+            size_t l_unprocessed_coverage_size = 0;
+
+            a_archive(l_unprocessed_coverage_size);
+
+            for (int i = 0; i < l_unprocessed_coverage_size; i++)
+            {
+                std::filesystem::path l_key;
+                a_archive(l_key);
+                m_unprocessed_coverage.push_back(m_input_cache.make_latent(l_key));
+            }
+
+            a_archive(m_coverage_size);
+            a_archive(m_subcoverage_sizes);
+
+            size_t l_subcoverages_size = 0;
+
+            a_archive(l_subcoverages_size);
+            
+            for (int i = 0; i < l_subcoverages_size; i++)
+            {
+                literal l_literal;
+                std::filesystem::path l_key;
+                
+                // Load both the literal and the cache "key"
+                a_archive(l_literal);
+                a_archive(l_key);
+
+                m_subcoverages.emplace(l_literal, m_node_cache.make_latent(l_key));
+
+            }
+
         }
 
     private:
