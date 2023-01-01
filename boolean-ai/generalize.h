@@ -87,6 +87,11 @@ namespace digital_ai
 
         }
 
+        template<typename Archive>
+        void serialize(Archive& a_archive)
+        {
+            a_archive(m_index, m_invert);
+        }
 
     };
 
@@ -97,6 +102,13 @@ namespace digital_ai
         std::vector<literal> m_literals;
         
     public:
+        literal_product(
+
+        )
+        {
+
+        }
+
         literal_product(
             const std::vector<literal>& a_literals
         ) :
@@ -190,6 +202,12 @@ namespace digital_ai
             return m_literals;
         }
 
+        template<typename Archive>
+        void serialize(Archive& a_archive)
+        {
+            a_archive(m_literals);
+        }
+
     };
 
     /// @brief A class which acts as a boolean sum of products of literals.
@@ -199,6 +217,13 @@ namespace digital_ai
         std::vector<literal_product> m_literal_products;
         
     public:
+        sum_of_products(
+
+        )
+        {
+
+        }
+
         sum_of_products(
             const std::vector<literal_product>& a_literal_products
         ) :
@@ -256,6 +281,12 @@ namespace digital_ai
             return m_literal_products;
         }
 
+        template<typename Archive>
+        void serialize(Archive& a_archive)
+        {
+            a_archive(m_literal_products);
+        }
+
     };
 
     /// @brief A class which acts as a vector of sums of products of literals.
@@ -299,33 +330,43 @@ namespace digital_ai
             return m_binary_functions;
         }
 
+        template<typename Archive>
+        void serialize(Archive& a_archive)
+        {
+            a_archive(m_binary_functions);
+        }
+
     };
 
-    std::map<literal, std::vector<unsatisfying_input*>> literal_coverage(
-        const std::vector<unsatisfying_input*>& a_covered_unsatisfying_inputs
+    std::map<literal, std::vector<latent_input>> literal_coverage(
+        std::vector<latent_input>& a_covered_unsatisfying_inputs
     )
     {
         // Create the "what-if" literal coverage vector which describes the
         // unsatisfying inputs that will be covered given the selection of any given literal
         // and the current covering product's literals.
-        std::map<literal, std::vector<unsatisfying_input*>> l_result;
+        std::map<literal, std::vector<latent_input>> l_result;
 
-        for (int i = 0; i < a_covered_unsatisfying_inputs[0]->size(); i++)
+        latent_input::scoped_ref l_first_input = a_covered_unsatisfying_inputs.front().lock();
+
+        for (int i = 0; i < l_first_input->size(); i++)
         {
-            l_result.emplace(literal(i, false), std::vector<unsatisfying_input*>());
-            l_result.emplace(literal(i, true), std::vector<unsatisfying_input*>());
+            l_result.emplace(literal(i, false), std::vector<latent_input>());
+            l_result.emplace(literal(i, true), std::vector<latent_input>());
         }
         
-        for (unsatisfying_input* l_unsatisfying_input : a_covered_unsatisfying_inputs)
+        for (latent_input& l_latent_input : a_covered_unsatisfying_inputs)
         {
-            for (int i = 0; i < l_unsatisfying_input->size(); i++)
+            latent_input::scoped_ref l_input = l_latent_input.lock();
+            
+            for (int i = 0; i < l_input->size(); i++)
             {
-                if (l_unsatisfying_input->at(i))
+                if (l_input->at(i))
                     // Make a note that this unsatisfying input contains the non-inverted literal.
-                    l_result[literal(i, false)].push_back(l_unsatisfying_input);
+                    l_result[literal(i, false)].push_back(l_latent_input);
                 else
                     // Make a note that this unsatisfying input contains the inverted literal.
-                    l_result[literal(i, true)].push_back(l_unsatisfying_input);
+                    l_result[literal(i, true)].push_back(l_latent_input);
             }
         }
 
@@ -333,13 +374,19 @@ namespace digital_ai
 
     }
 
+    // Forward declare the literal coverage tree type
+    class literal_coverage_tree;
+    typedef cache<std::filesystem::path, literal_coverage_tree>::latent latent_literal_coverage_tree;
+
+
     class literal_coverage_tree
     {
     private:
-        std::vector<literal> m_covering_literals;
-        size_t m_coverage_size = 0;
-        std::vector<unsatisfying_input*> m_unprocessed_coverage;
-        std::map<literal, literal_coverage_tree> m_subcoverages;
+        std::vector<literal>                            m_covering_literals;
+        std::vector<latent_input>                       m_unprocessed_coverage;
+        size_t                                          m_coverage_size = 0;
+        std::map<literal, size_t>                       m_subcoverage_sizes;
+        std::map<literal, latent_literal_coverage_tree> m_subcoverages;
 
     public:
         literal_coverage_tree(
@@ -351,32 +398,69 @@ namespace digital_ai
         }
 
         void add_coverage(
-            const std::vector<unsatisfying_input*>& a_additional_coverage
+            const std::vector<latent_input>& a_additional_coverage
         )
         {
             // Insert the additional coverage into the vector of total unsatisfying coverage
             // for this node.
             m_unprocessed_coverage.insert(m_unprocessed_coverage.end(), a_additional_coverage.begin(), a_additional_coverage.end());
             
-            // Increase the total coverage size.
+            // Add to the current known coverage size.
             m_coverage_size += a_additional_coverage.size();
 
         }
 
-        literal_product covering_product(
-            const satisfying_input* a_satisfying_input
+        latent_literal_coverage_tree coverage_minimizing_subtree(
+            input a_satisfying_input
         )
         {
-            literal_coverage_tree* l_minimal_literal_coverage_tree = this;
+            // This function call will realize the subcoverages, before returning the
+            // tree whose root has minimal literal coverage.
 
-            while(l_minimal_literal_coverage_tree->m_coverage_size > 0)
+            if (m_unprocessed_coverage.size() > 0)
             {
-                l_minimal_literal_coverage_tree =
-                    &l_minimal_literal_coverage_tree->minimal_literal_coverage_tree(a_satisfying_input);
+                // Only realize the subcoverages if it must be done,
+                // assuming the unprocessed coverage has a size larger than zero.
+                realize_subcoverages();
+            }
+            
+            std::map<literal, size_t>::iterator l_coverage_minimizing_iterator = m_subcoverage_sizes.begin();
+
+            for (auto l_it = m_subcoverage_sizes.begin(); l_it != m_subcoverage_sizes.end(); l_it++)
+            {
+                if (l_it == l_coverage_minimizing_iterator)
+                    // Just skip this iteration. The current literal is equal to the literal
+                    // represented by this iteration.
+                    continue;
+
+                // First, check to make sure that the literal exists within
+                // the satisfying input.
+                bool l_literal_exists_within_satisfying_input = 
+                    a_satisfying_input.at(l_it->first.index()) != l_it->first.invert();
+
+                if (l_literal_exists_within_satisfying_input &&
+                    l_it->second < l_coverage_minimizing_iterator->second)
+                {
+                    l_coverage_minimizing_iterator = l_it;
+                }
             }
 
-            return literal_product(l_minimal_literal_coverage_tree->m_covering_literals);
+            return m_subcoverages[l_coverage_minimizing_iterator->first];
             
+        }
+        
+        const size_t& coverage_size(
+
+        ) const
+        {
+            return m_coverage_size;
+        }
+
+        const std::vector<literal>& covering_literals(
+
+        ) const
+        {
+            return m_covering_literals;
         }
 
     private:
@@ -385,7 +469,7 @@ namespace digital_ai
         )
         {
             // First, get the raw literal coverage.
-            std::map<literal, std::vector<unsatisfying_input*>> l_literal_coverage = literal_coverage(
+            std::map<literal, std::vector<latent_input>> l_literal_coverage = literal_coverage(
                 m_unprocessed_coverage
             );
 
@@ -410,15 +494,22 @@ namespace digital_ai
                 l_covering_literals.push_back(l_it->first);
 
                 // Generate subtrees for each literal coverage.
-                std::map<literal, literal_coverage_tree>::iterator l_subtree = m_subcoverages.find(l_it->first);
+                std::map<literal, latent_literal_coverage_tree>::iterator l_subtree_iterator = m_subcoverages.find(l_it->first);
                 
-                if (l_subtree == m_subcoverages.end())
+                if (l_subtree_iterator == m_subcoverages.end())
                 {
-                    l_subtree =
+                    // Create the subtree
+                    l_subtree_iterator =
                         m_subcoverages.emplace(l_it->first, literal_coverage_tree(l_covering_literals)).first;
+                    // Create the entry in the coverage size map
+                    m_subcoverage_sizes.emplace(l_it->first, 0);
                 }
 
-                l_subtree->second.add_coverage(l_literal_coverage[l_it->first]);
+                latent_literal_coverage_tree::scoped_ref l_subtree = l_subtree_iterator->second.lock();
+
+                m_subcoverage_sizes[l_it->first] += l_it->second.size();
+
+                l_subtree->add_coverage(l_it->second);
 
             }
 
@@ -428,42 +519,35 @@ namespace digital_ai
 
         }
 
-        literal_coverage_tree& minimal_literal_coverage_tree(
-            const satisfying_input* a_satisfying_input
-        )
+    };
+
+    literal_product covering_product(
+        latent_literal_coverage_tree a_latent_literal_coverage_tree,
+        latent_input a_satisfying_latent_input
+    )
+    {
+        latent_input::scoped_ref     l_satisfying_input =
+            a_satisfying_latent_input.lock();
+        
+        latent_literal_coverage_tree l_coverage_minimizing_latent_tree = 
+            a_latent_literal_coverage_tree;
+
+        while(true)
         {
-            // This function call will realize the subcoverages, before returning the
-            // tree whose root has minimal literal coverage.
+            latent_literal_coverage_tree::scoped_ref l_coverage_minimizing_tree = 
+                l_coverage_minimizing_latent_tree.lock();
 
-            if (m_unprocessed_coverage.size() > 0)
-            {
-                // Only realize the subcoverages if it must be done,
-                // assuming the unprocessed coverage has a size larger than zero.
-                realize_subcoverages();
-            }
-            
-            literal_coverage_tree* l_minimal_literal_coverage_tree = nullptr;
+            if (l_coverage_minimizing_tree->coverage_size() == 0)
+                break;
 
-            for (auto l_it = m_subcoverages.begin(); l_it != m_subcoverages.end(); l_it++)
-            {
-                // First, check to make sure that the literal exists within
-                // the satisfying input.
-                bool l_literal_exists_within_satisfying_input = 
-                    a_satisfying_input->at(l_it->first.index()) != l_it->first.invert();
+            l_coverage_minimizing_latent_tree = 
+                l_coverage_minimizing_tree->coverage_minimizing_subtree(*l_satisfying_input);
 
-                if (l_literal_exists_within_satisfying_input &&
-                    ((l_minimal_literal_coverage_tree == nullptr) ||
-                    l_it->second.m_coverage_size < l_minimal_literal_coverage_tree->m_coverage_size))
-                {
-                    l_minimal_literal_coverage_tree = &l_it->second;
-                }
-            }
-
-            return *l_minimal_literal_coverage_tree;
-            
         }
 
-    };
+        return literal_product(l_coverage_minimizing_latent_tree.lock()->covering_literals());
+
+    }
 
     /// @brief Gets a sum of covering products which when coupled, will cover all satisfying inputs.
     ///        this will not cover any unsatisfying inputs. It will however cover some unresolved inputs.
