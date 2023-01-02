@@ -339,35 +339,36 @@ namespace digital_ai
 
     };
 
-    std::map<literal, std::vector<latent_input>> literal_coverage(
-        std::vector<latent_input>& a_covered_unsatisfying_inputs
+    std::map<literal, std::vector<std::filesystem::path>> literal_coverage(
+        cache<std::filesystem::path, input>& a_cache,
+        std::vector<std::filesystem::path>& a_covered_unsatisfying_inputs
     )
     {
         // Create the "what-if" literal coverage vector which describes the
         // unsatisfying inputs that will be covered given the selection of any given literal
         // and the current covering product's literals.
-        std::map<literal, std::vector<latent_input>> l_result;
+        std::map<literal, std::vector<std::filesystem::path>> l_result;
 
-        latent_input::scoped_ref l_first_input = a_covered_unsatisfying_inputs.front().lock();
+        cache<std::filesystem::path, input>::entry l_first_input = a_cache.get(a_covered_unsatisfying_inputs.front());
 
         for (int i = 0; i < l_first_input->size(); i++)
         {
-            l_result.emplace(literal(i, false), std::vector<latent_input>());
-            l_result.emplace(literal(i, true), std::vector<latent_input>());
+            l_result.emplace(literal(i, false), std::vector<std::filesystem::path>());
+            l_result.emplace(literal(i, true), std::vector<std::filesystem::path>());
         }
         
-        for (latent_input& l_latent_input : a_covered_unsatisfying_inputs)
+        for (std::filesystem::path& l_input_path : a_covered_unsatisfying_inputs)
         {
-            latent_input::scoped_ref l_input = l_latent_input.lock();
+            cache<std::filesystem::path, input>::entry l_input = a_cache.get(l_input_path);
             
             for (int i = 0; i < l_input->size(); i++)
             {
                 if (l_input->at(i))
                     // Make a note that this unsatisfying input contains the non-inverted literal.
-                    l_result[literal(i, false)].push_back(l_latent_input);
+                    l_result[literal(i, false)].push_back(l_input_path);
                 else
                     // Make a note that this unsatisfying input contains the inverted literal.
-                    l_result[literal(i, true)].push_back(l_latent_input);
+                    l_result[literal(i, true)].push_back(l_input_path);
             }
         }
 
@@ -375,37 +376,32 @@ namespace digital_ai
 
     }
 
-    // Forward declare the literal coverage tree type
-    class literal_coverage_tree;
-    typedef cache<std::filesystem::path, literal_coverage_tree>::latent latent_literal_coverage_tree;
-
-
-    class literal_coverage_tree
+    class unsatisfying_coverage_tree
     {
     private:
-        cache<std::filesystem::path, input>&                 m_input_cache;
-        cache<std::filesystem::path, literal_coverage_tree>& m_node_cache;
-        std::vector<literal>                                 m_covering_literals;
-        std::vector<latent_input>                            m_unprocessed_coverage;
-        size_t                                               m_coverage_size = 0;
-        std::map<literal, size_t>                            m_subcoverage_sizes;
-        std::map<literal, latent_literal_coverage_tree>      m_subcoverages;
+        cache<std::filesystem::path, input>&                      m_input_cache;
+        cache<std::filesystem::path, unsatisfying_coverage_tree>& m_tree_cache;
+        std::vector<literal>                                      m_covering_literals;
+        std::vector<std::filesystem::path>                        m_unprocessed_coverage;
+        size_t                                                    m_coverage_size = 0;
+        std::map<literal, size_t>                                 m_subcoverage_sizes;
+        std::map<literal, std::filesystem::path>                  m_subcoverages;
 
     public:
-        literal_coverage_tree(
+        unsatisfying_coverage_tree(
             cache<std::filesystem::path, input>& a_input_cache,
-            cache<std::filesystem::path, literal_coverage_tree>& a_node_cache,
+            cache<std::filesystem::path, unsatisfying_coverage_tree>& a_tree_cache,
             const std::vector<literal>& a_covering_literals = {}
         ) :
             m_input_cache(a_input_cache),
-            m_node_cache(a_node_cache),
+            m_tree_cache(a_tree_cache),
             m_covering_literals(a_covering_literals)
         {
             
         }
 
         void add_coverage(
-            const std::vector<latent_input>& a_additional_coverage
+            const std::vector<std::filesystem::path>& a_additional_coverage
         )
         {
             // Insert the additional coverage into the vector of total unsatisfying coverage
@@ -417,8 +413,8 @@ namespace digital_ai
 
         }
 
-        latent_literal_coverage_tree coverage_minimizing_subtree(
-            input a_satisfying_input
+        std::filesystem::path coverage_minimizing_subtree_path(
+            cache<std::filesystem::path, input>::entry a_satisfying_input
         )
         {
             // This function call will realize the subcoverages, before returning the
@@ -443,7 +439,7 @@ namespace digital_ai
                 // First, check to make sure that the literal exists within
                 // the satisfying input.
                 bool l_literal_exists_within_satisfying_input = 
-                    a_satisfying_input.at(l_it->first.index()) != l_it->first.invert();
+                    a_satisfying_input->at(l_it->first.index()) != l_it->first.invert();
 
                 if (l_literal_exists_within_satisfying_input &&
                     l_it->second < l_coverage_minimizing_iterator->second)
@@ -471,68 +467,15 @@ namespace digital_ai
         }
 
         template<typename ARCHIVE>
-        void save(
+        void serialize(
             ARCHIVE& a_archive
         )
         {
             a_archive(m_covering_literals);
-            
-            a_archive(m_unprocessed_coverage.size());
-
-            for (int i = 0; i < m_unprocessed_coverage.size(); i++)
-                a_archive(m_unprocessed_coverage[i].key());
-
+            a_archive(m_unprocessed_coverage);
             a_archive(m_coverage_size);
             a_archive(m_subcoverage_sizes);
-
-            a_archive(m_subcoverages.size());
-            
-            for (auto l_it = m_subcoverages.begin(); l_it != m_subcoverages.end(); l_it++)
-            {
-                a_archive(l_it->first);
-                a_archive(l_it->second.key());
-            }
-
-        }
-
-        template<typename ARCHIVE>
-        void load(
-            ARCHIVE& a_archive
-        )
-        {
-            a_archive(m_covering_literals);
-            
-            size_t l_unprocessed_coverage_size = 0;
-
-            a_archive(l_unprocessed_coverage_size);
-
-            for (int i = 0; i < l_unprocessed_coverage_size; i++)
-            {
-                std::filesystem::path l_key;
-                a_archive(l_key);
-                m_unprocessed_coverage.push_back(m_input_cache.make_latent(l_key));
-            }
-
-            a_archive(m_coverage_size);
-            a_archive(m_subcoverage_sizes);
-
-            size_t l_subcoverages_size = 0;
-
-            a_archive(l_subcoverages_size);
-            
-            for (int i = 0; i < l_subcoverages_size; i++)
-            {
-                literal l_literal;
-                std::filesystem::path l_key;
-                
-                // Load both the literal and the cache "key"
-                a_archive(l_literal);
-                a_archive(l_key);
-
-                m_subcoverages.emplace(l_literal, m_node_cache.make_latent(l_key));
-
-            }
-
+            a_archive(m_subcoverages);
         }
 
     private:
@@ -541,7 +484,8 @@ namespace digital_ai
         )
         {
             // First, get the raw literal coverage.
-            std::map<literal, std::vector<latent_input>> l_literal_coverage = literal_coverage(
+            std::map<literal, std::vector<std::filesystem::path>> l_literal_coverage = literal_coverage(
+                m_input_cache,
                 m_unprocessed_coverage
             );
 
@@ -566,22 +510,32 @@ namespace digital_ai
                 l_covering_literals.push_back(l_it->first);
 
                 // Generate subtrees for each literal coverage.
-                std::map<literal, latent_literal_coverage_tree>::iterator l_subtree_iterator = m_subcoverages.find(l_it->first);
+                std::map<literal, std::filesystem::path>::iterator l_subtree_iterator = m_subcoverages.find(l_it->first);
                 
                 if (l_subtree_iterator == m_subcoverages.end())
                 {
                     // Create the subtree
+                    unsatisfying_coverage_tree l_subtree(
+                        m_input_cache, m_tree_cache, l_covering_literals);
+
+                    // Insert the subtree into cache
+                    m_tree_cache.insert(l_subtree.path(), l_subtree);
+
+                    // Insert the subtree path into the list of subtree paths.
                     l_subtree_iterator =
-                        m_subcoverages.emplace(l_it->first, literal_coverage_tree(l_covering_literals)).first;
+                        m_subcoverages.emplace(l_it->first, l_subtree.path()).first;
+
                     // Create the entry in the coverage size map
                     m_subcoverage_sizes.emplace(l_it->first, 0);
+
                 }
 
-                latent_literal_coverage_tree::scoped_ref l_subtree = l_subtree_iterator->second.lock();
+                cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_subtree_entry = 
+                    m_tree_cache.get(l_subtree_iterator->second);
 
                 m_subcoverage_sizes[l_it->first] += l_it->second.size();
 
-                l_subtree->add_coverage(l_it->second);
+                l_subtree_entry->add_coverage(l_it->second);
 
             }
 
@@ -591,33 +545,66 @@ namespace digital_ai
 
         }
 
-    };
-
-    literal_product covering_product(
-        latent_literal_coverage_tree a_latent_literal_coverage_tree,
-        latent_input a_satisfying_latent_input
-    )
-    {
-        latent_input::scoped_ref     l_satisfying_input =
-            a_satisfying_latent_input.lock();
-        
-        latent_literal_coverage_tree l_coverage_minimizing_latent_tree = 
-            a_latent_literal_coverage_tree;
-
-        while(true)
+        std::filesystem::path path(
+            
+        )
         {
-            latent_literal_coverage_tree::scoped_ref l_coverage_minimizing_tree = 
-                l_coverage_minimizing_latent_tree.lock();
+            std::string l_file_name;
 
-            if (l_coverage_minimizing_tree->coverage_size() == 0)
-                break;
+            for (const literal& l_literal : m_covering_literals)
+            {
+                if (l_literal.invert())
+                {
+                    l_file_name += '-';
+                }
 
-            l_coverage_minimizing_latent_tree = 
-                l_coverage_minimizing_tree->coverage_minimizing_subtree(*l_satisfying_input);
+                l_file_name += l_literal.index();
+                
+                l_file_name += '_';
+            }
+            
+            l_file_name += ".bin";
+
+            return std::filesystem::path(l_file_name);
 
         }
 
-        return literal_product(l_coverage_minimizing_latent_tree.lock()->covering_literals());
+    };
+
+    literal_product covering_product(
+        cache<std::filesystem::path, input>& a_input_cache,
+        cache<std::filesystem::path, unsatisfying_coverage_tree>& a_tree_cache,
+        const std::filesystem::path& a_tree_path,
+        const std::filesystem::path& a_satisfying_input_path
+    )
+    {
+        std::filesystem::path l_coverage_minimizing_tree_path;
+
+        // LEAVE THIS IT'S OWN SCOPE. IT IS IMPORTANT
+        // We want the cache::entry types to fall out of scope as that will unlock
+        // the actual entries in the cache. If we do not do this before
+        // Continuing the recursion, then all nodes used in the recursion will have their
+        // respective entries locked in cache.
+        {
+            // Get the input from cache
+            cache<std::filesystem::path, input>::entry l_satisfying_input = 
+                a_input_cache.get(a_satisfying_input_path);
+            // Get this node from cache.
+            cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_tree = 
+                a_tree_cache.get(a_tree_path);
+
+            if (l_tree->coverage_size() == 0)
+            {
+                // This node holds information about the minimally covering product.
+                return literal_product(l_tree->covering_literals());
+            }
+
+            l_coverage_minimizing_tree_path = l_tree->coverage_minimizing_subtree_path(l_satisfying_input);
+        }
+
+        // Use recursion.
+        return covering_product(
+            a_input_cache, a_tree_cache, l_coverage_minimizing_tree_path, a_satisfying_input_path);
 
     }
 
@@ -630,7 +617,7 @@ namespace digital_ai
         const partitioned_example_set& a_partitioned_example_set
     )
     {
-        literal_coverage_tree l_literal_coverage_tree;
+        unsatisfying_coverage_tree l_literal_coverage_tree;
 
         l_literal_coverage_tree.add_coverage(a_partitioned_example_set.m_unsatisfying_inputs);
 

@@ -163,7 +163,7 @@ void test_get_covering_product(
 
         digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
 
-        digital_ai::literal_coverage_tree l_literal_coverage_tree;
+        digital_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
 
         l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unsatisfying_inputs);
 
@@ -191,7 +191,7 @@ void test_get_covering_product(
 
         digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
 
-        digital_ai::literal_coverage_tree l_literal_coverage_tree;
+        digital_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
 
         l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unsatisfying_inputs);
 
@@ -219,7 +219,7 @@ void test_get_covering_product(
 
         digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
 
-        digital_ai::literal_coverage_tree l_literal_coverage_tree;
+        digital_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
 
         l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unsatisfying_inputs);
 
@@ -254,7 +254,7 @@ void test_get_covering_product(
 
         digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
 
-        digital_ai::literal_coverage_tree l_literal_coverage_tree;
+        digital_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
 
         l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unsatisfying_inputs);
 
@@ -291,7 +291,7 @@ void test_get_covering_product(
 
         digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
 
-        digital_ai::literal_coverage_tree l_literal_coverage_tree;
+        digital_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
 
         l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unsatisfying_inputs);
 
@@ -333,7 +333,7 @@ void test_get_covering_product(
 
         digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 1);
 
-        digital_ai::literal_coverage_tree l_literal_coverage_tree;
+        digital_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
 
         l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unsatisfying_inputs);
 

@@ -13,7 +13,7 @@ template<typename KEY, typename VALUE>
 class cache
 {
 public:
-    class guarded_value
+    class entry
     {
     private:
         cache&     m_cache;
@@ -21,14 +21,14 @@ public:
         VALUE&     m_reference;
 
     public:
-        virtual ~guarded_value(
+        virtual ~entry(
 
         )
         {
             m_cache.unlock(m_key);
         }
 
-        guarded_value(
+        entry(
             cache& a_cache,
             const KEY& a_key,
             VALUE& a_reference
@@ -74,7 +74,7 @@ public:
         while(m_map.size() > 0)
         {
             // If there is an element still locked, this will throw an exception.
-            unload_first_unlocked();
+            unload(m_access_order.begin());
         }
     }
 
@@ -90,7 +90,7 @@ public:
 
     }
 
-    guarded_value get(
+    entry get(
         const KEY& a_key
     )
     {
@@ -102,7 +102,7 @@ public:
 
             if (m_map.size() == m_max_size)
             {
-                unload_first_unlocked();
+                unload(first_unlocked());
             }
 
             // Inserts the key value pair into the map, and saves the iterator
@@ -132,13 +132,59 @@ public:
         }
 
         // Increments the lock count by 1 for this key.
-        m_lock_counts[a_key]++;
+        lock(a_key);
 
-        return guarded_value(*this, l_map_location->first, *l_map_location->second);
+        return entry(*this, l_map_location->first, *l_map_location->second);
+
+    }
+
+    entry insert(
+        const KEY& a_key,
+        const VALUE& a_value
+    )
+    {
+        typename std::map<KEY, std::shared_ptr<VALUE>>::iterator l_map_location = m_map.find(a_key);
+
+        if (l_map_location != m_map.end())
+        {
+            // Hit!
+            throw std::runtime_error("Error: key was already found in map.");
+        }
+
+        if (m_map.size() == m_max_size)
+        {
+            unload(first_unlocked());
+        }
+
+        // Inserts the key value pair into the map, and saves the iterator
+        // The value must be dynamically allocated so as to preserve the memory address
+        // of the actual value in the case of a move event by the overhead of the std::map.
+        l_map_location = m_map.emplace(
+            a_key,
+            std::shared_ptr<VALUE>(new VALUE(a_value))
+        ).first;
+
+        // Make note that this was the most recently accessed key value pair.
+        m_access_order.push_back(a_key);
+
+        // Insert the number of locks on this value. It should start out being zero.
+        m_lock_counts.emplace(a_key, 0);
+
+        // Increments the lock count by 1 for this key.
+        lock(a_key);
+
+        return entry(*this, l_map_location->first, *l_map_location->second);
 
     }
 
 private:
+    void lock(
+        const KEY& a_key
+    )
+    {
+        m_lock_counts[a_key]++;
+    }
+
     void unlock(
         const KEY& a_key
     )
@@ -146,21 +192,22 @@ private:
         m_lock_counts[a_key]--;
     }
 
-    void unload_first_unlocked(
-
+    void unload(
+        std::deque<KEY>::iterator a_access_order_position
     )
     {
-        typename std::deque<KEY>::iterator l_first_unlocked = first_unlocked();
+        if (m_lock_counts[*a_access_order_position] > 0)
+            throw std::runtime_error("Error: lock count was greater than zero on unload() call.");
 
         // Push the value from cache to remote.
-        m_push(*l_first_unlocked, *m_map[*l_first_unlocked]);
+        m_push(*a_access_order_position, *m_map[*a_access_order_position]);
 
         // Erase the least recently accessed KVP.
-        m_map.erase(*l_first_unlocked);
-        m_lock_counts.erase(*l_first_unlocked);
+        m_map.erase(*a_access_order_position);
+        m_lock_counts.erase(*a_access_order_position);
 
         // This must be done last, since this will invalidate the iterator.
-        m_access_order.erase(l_first_unlocked);
+        m_access_order.erase(a_access_order_position);
 
     }
 

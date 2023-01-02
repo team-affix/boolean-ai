@@ -32,67 +32,20 @@ namespace digital_ai
     // Input type for the generalized function.
     typedef std::vector<bool> input;
 
-    // Describes an input as it pertains to a certain cache (by key).
-    typedef cache<std::filesystem::path, input>::latent latent_input;
-
     /// @brief This struct has a set of unsatisfying inputs, and a set of satisfying inputs.
     ///        These sets will be used for generalization later.
     struct partitioned_example_set
     {
-        std::vector<latent_input> m_unsatisfying_inputs;
-        std::vector<latent_input> m_satisfying_inputs;
-        cache<std::filesystem::path, input>& m_input_cache;
+        std::vector<std::filesystem::path> m_unsatisfying_inputs;
+        std::vector<std::filesystem::path> m_satisfying_inputs;
         
-        partitioned_example_set(
-            cache<std::filesystem::path, input>& a_input_cache
-        ) :
-            m_input_cache(a_input_cache)
-        {
-
-        }
-
-        template<typename Archive>
-        void save(
-            Archive& a_archive
+        template<typename ARCHIVE>
+        void serialize(
+            ARCHIVE& a_archive
         )
         {
-            // First, deal with unsatisfying inputs.
-            a_archive(m_unsatisfying_inputs.size());
-            for (const auto& l_latent : m_unsatisfying_inputs)
-                a_archive(l_latent.key());
-
-            // Second, deal with satisfying inputs.
-            a_archive(m_satisfying_inputs.size());
-            for (const auto& l_latent : m_satisfying_inputs)
-                a_archive(l_latent.key());
-            
-        }
-
-        template<typename Archive>
-        void load(
-            Archive& a_archive
-        )
-        {
-            size_t l_unsatisfying_size = 0;
-            a_archive(l_unsatisfying_size);
-            
-            for (int i = 0; i < l_unsatisfying_size; i++)
-            {
-                std::filesystem::path l_key;
-                a_archive(l_key);
-                m_unsatisfying_inputs.push_back(m_input_cache.make_latent(l_key));
-            }
-
-            size_t l_satisfying_size = 0;
-            a_archive(l_satisfying_size);
-
-            for (int i = 0; i < l_satisfying_size; i++)
-            {
-                std::filesystem::path l_key;
-                a_archive(l_key);
-                m_satisfying_inputs.push_back(m_input_cache.make_latent(l_key));
-            }
-
+            a_archive(m_unsatisfying_inputs);
+            a_archive(m_satisfying_inputs);
         }
 
     };
