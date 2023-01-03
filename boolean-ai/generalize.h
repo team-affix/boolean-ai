@@ -519,18 +519,18 @@ namespace digital_ai
                         m_input_cache, m_tree_cache, l_covering_literals);
 
                     // Insert the subtree into cache
-                    m_tree_cache.insert(l_subtree.path(), l_subtree);
+                    m_tree_cache.insert(l_subtree.file_name(), l_subtree);
 
                     // Insert the subtree path into the list of subtree paths.
                     l_subtree_iterator =
-                        m_subcoverages.emplace(l_it->first, l_subtree.path()).first;
+                        m_subcoverages.emplace(l_it->first, l_subtree.file_name()).first;
 
                     // Create the entry in the coverage size map
                     m_subcoverage_sizes.emplace(l_it->first, 0);
 
                 }
 
-                cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_subtree_entry = 
+                cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_subtree_entry =
                     m_tree_cache.get(l_subtree_iterator->second);
 
                 m_subcoverage_sizes[l_it->first] += l_it->second.size();
@@ -545,7 +545,7 @@ namespace digital_ai
 
         }
 
-        std::filesystem::path path(
+        std::filesystem::path file_name(
             
         )
         {
@@ -589,6 +589,7 @@ namespace digital_ai
             // Get the input from cache
             cache<std::filesystem::path, input>::entry l_satisfying_input = 
                 a_input_cache.get(a_satisfying_input_path);
+
             // Get this node from cache.
             cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_tree = 
                 a_tree_cache.get(a_tree_path);
