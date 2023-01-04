@@ -10,6 +10,32 @@
 #include <fstream>
 #include "cereal/types/vector.hpp"
 #include "cereal/archives/binary.hpp"
+#include "cereal/types/map.hpp"
+#include "cereal/types/deque.hpp"
+#include "cereal/types/string.hpp"
+
+namespace cereal
+{
+    template<typename ARCHIVE>
+    void save(
+        ARCHIVE& a_archive,
+        const std::filesystem::path& a_path
+    )
+    {
+        a_archive(a_path.generic_string());
+    }
+
+    template<typename ARCHIVE>
+    void load(
+        ARCHIVE& a_archive,
+        std::filesystem::path& a_path
+    )
+    {
+        std::string l_string;
+        a_archive(l_string);
+        a_path = std::filesystem::path(l_string);
+    }
+}
 
 namespace boolean_ai
 {
@@ -440,7 +466,7 @@ namespace boolean_ai
 
         }
 
-        std::filesystem::path coverage_minimizing_subtree_path(
+        std::filesystem::path coverage_minimizing_subtree_file_name(
             cache<std::filesystem::path, unsatisfying_coverage_tree>& a_tree_cache,
             cache<std::filesystem::path, input>::entry a_satisfying_input
         )
@@ -455,7 +481,7 @@ namespace boolean_ai
                 propagate_coverage(a_tree_cache);
             }
             
-            std::map<literal, size_t>::iterator l_coverage_minimizing_iterator = m_subcoverage_sizes.begin();
+            std::map<literal, size_t>::iterator l_coverage_minimizing_iterator = m_subcoverage_sizes.end();
 
             for (auto l_it = m_subcoverage_sizes.begin(); l_it != m_subcoverage_sizes.end(); l_it++)
             {
@@ -470,7 +496,8 @@ namespace boolean_ai
                     a_satisfying_input->at(l_it->first.index()) != l_it->first.invert();
 
                 if (l_literal_exists_within_satisfying_input &&
-                    l_it->second < l_coverage_minimizing_iterator->second)
+                    (l_coverage_minimizing_iterator == m_subcoverage_sizes.end() || 
+                    l_it->second < l_coverage_minimizing_iterator->second))
                 {
                     l_coverage_minimizing_iterator = l_it;
                 }
@@ -611,7 +638,7 @@ namespace boolean_ai
         {
             // On destruction, export the satisfying vector of input paths to file.
 
-            std::ofstream l_ofs(m_output_bit_folder_path, std::ios::binary);
+            std::ofstream l_ofs(m_output_bit_folder_path / s_satisfying_input_paths_file_name, std::ios::binary);
 
             cereal::BinaryOutputArchive l_archive(l_ofs);
 
@@ -636,7 +663,7 @@ namespace boolean_ai
                     const std::filesystem::path& a_path
                 )
                 {
-                    std::ifstream l_ifs(a_output_bit_folder_path / a_path, std::ios::binary);
+                    std::ifstream l_ifs(a_path, std::ios::binary);
                     
                     cereal::BinaryInputArchive l_archive(l_ifs);
 
@@ -653,7 +680,7 @@ namespace boolean_ai
                     const std::filesystem::path& a_path, const unsatisfying_coverage_tree& a_tree
                 )
                 {
-                    std::ofstream l_ofs(a_output_bit_folder_path / a_path, std::ios::binary);
+                    std::ofstream l_ofs(a_path, std::ios::binary);
 
                     cereal::BinaryOutputArchive l_archive(l_ofs);
 
@@ -671,7 +698,7 @@ namespace boolean_ai
 
                 // Create the root node of the unsatisfying coverage tree.
                 m_tree_cache.insert(
-                    a_output_bit_folder_path / s_tree_root_file_name,
+                    m_output_bit_folder_path / s_tree_root_file_name,
                     unsatisfying_coverage_tree(a_input_cache)
                 );
                 
@@ -733,7 +760,7 @@ namespace boolean_ai
             {
                 l_covering_products.push_back(
                     covering_product(
-                        m_output_bit_folder_path / s_tree_root_file_name,
+                        s_tree_root_file_name,
                         m_satisfying_input_paths[i]
                     ));
             }
@@ -749,11 +776,11 @@ namespace boolean_ai
         /// @param a_satisfying_input_path 
         /// @return 
         literal_product covering_product(
-            const std::filesystem::path& a_tree_path,
+            const std::filesystem::path& a_tree_file_name,
             const std::filesystem::path& a_satisfying_input_path
         )
         {
-            std::filesystem::path l_coverage_minimizing_tree_path;
+            std::filesystem::path l_coverage_minimizing_tree_file_name;
 
             // LEAVE THIS IT'S OWN SCOPE. IT IS IMPORTANT
             // We want the cache::entry types to fall out of scope as that will unlock
@@ -767,7 +794,7 @@ namespace boolean_ai
 
                 // Get this node from cache.
                 cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_tree = 
-                    m_tree_cache.get(a_tree_path);
+                    m_tree_cache.get(m_output_bit_folder_path / a_tree_file_name);
 
                 if (l_tree->coverage_size() == 0)
                 {
@@ -775,12 +802,12 @@ namespace boolean_ai
                     return literal_product(l_tree->covering_literals());
                 }
 
-                l_coverage_minimizing_tree_path = l_tree->coverage_minimizing_subtree_path(m_tree_cache, l_satisfying_input);
+                l_coverage_minimizing_tree_file_name = l_tree->coverage_minimizing_subtree_file_name(m_tree_cache, l_satisfying_input);
 
             }
 
             // Use recursion.
-            return covering_product(l_coverage_minimizing_tree_path, a_satisfying_input_path);
+            return covering_product(l_coverage_minimizing_tree_file_name, a_satisfying_input_path);
 
         }
 
@@ -901,7 +928,9 @@ namespace boolean_ai
                 const raw_example& l_raw_example = a_raw_examples[i];
 
                 // Create the unique file name for the input.
-                std::filesystem::path l_input_path = std::to_string(m_batch_index) + "_" + std::to_string(i) + ".bin";
+                std::filesystem::path l_input_path = 
+                    m_solution_path / 
+                    (std::to_string(m_batch_index) + "_" + std::to_string(i) + ".bin");
 
                 // Insert the file name, input pair into the cache. Once this cache
                 // falls out of scope, the file name, input pair will be written to disk.

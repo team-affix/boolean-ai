@@ -27,6 +27,24 @@ namespace boolean_ai
     // Input type for the generalized function.
     typedef std::vector<bool> input;
 
+    template<typename Archive>
+    void save(
+        Archive& a_archive,
+        const input& a_vector
+    )
+    {
+        a_archive((const std::vector<bool>&)a_vector);
+    }
+
+    template<typename Archive>
+    void load(
+        Archive& a_archive,
+        input& a_vector
+    )
+    {
+        a_archive((std::vector<bool>&)a_vector);
+    }
+
 }
 
 #endif

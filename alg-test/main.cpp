@@ -121,14 +121,16 @@ void test_cache(
 
             // This file should not yet exist. Only after the size
             // of the cache has been exceeded will it be created.
-            assert(!fs::exists("testing1.bin"));
+            assert(!fs::exists("testing2.bin"));
 
             // On this insertion, the least recently accessed (inserted) entry should be pushed to LTS,
             // since the maximum size of the cache is 3 and this will be the 4th insertion.
             l_cache.insert("testing4.bin", "jake4");
 
             // This file should now exist.
-            assert(fs::exists("testing1.bin"));
+            // The reason why testing1.bin would not have been created is because we still have
+            // an instance of a cache::entry pointing to that entry, locking it.
+            assert(fs::exists("testing2.bin"));
             
             l_cache.insert("testing5.bin", "jake5");
 
@@ -167,9 +169,6 @@ void test_cache(
     fs::remove("testing3.bin");
     fs::remove("testing4.bin");
     fs::remove("testing5.bin");
-
-
-    
 
 }
 
