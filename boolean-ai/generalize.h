@@ -6,9 +6,10 @@
 #include <assert.h>
 #include <algorithm>
 #include <map>
-#include <chrono>
-#include <iostream>
 #include <math.h>
+#include <fstream>
+#include "cereal/types/vector.hpp"
+#include "cereal/archives/binary.hpp"
 
 namespace boolean_ai
 {
@@ -305,6 +306,13 @@ namespace boolean_ai
         std::vector<sum_of_products> m_binary_functions;
 
     public:
+        sum_of_products_string(
+
+        )
+        {
+
+        }
+
         sum_of_products_string(
             const std::vector<sum_of_products>& a_binary_functions
         ) :
@@ -663,7 +671,7 @@ namespace boolean_ai
 
                 // Create the root node of the unsatisfying coverage tree.
                 m_tree_cache.insert(
-                    a_output_bit_folder_path / i_tree_root_file_name,
+                    a_output_bit_folder_path / s_tree_root_file_name,
                     unsatisfying_coverage_tree(a_input_cache)
                 );
                 
@@ -673,7 +681,7 @@ namespace boolean_ai
 
             // If the file does exist, load the satisfying input paths vector.
             
-            std::ifstream l_ifs(a_output_bit_folder_path / i_satisfying_input_paths_file_name, std::ios::binary);
+            std::ifstream l_ifs(a_output_bit_folder_path / s_satisfying_input_paths_file_name, std::ios::binary);
             
             cereal::BinaryInputArchive l_archive(l_ifs);
 
@@ -704,7 +712,7 @@ namespace boolean_ai
         )
         {
             cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_tree =
-                m_tree_cache.get(m_output_bit_folder_path / i_tree_root_file_name);
+                m_tree_cache.get(m_output_bit_folder_path / s_tree_root_file_name);
 
             l_tree->add_coverage(a_unsatisfying_input_paths);
 
@@ -725,7 +733,7 @@ namespace boolean_ai
             {
                 l_covering_products.push_back(
                     covering_product(
-                        m_output_bit_folder_path / i_tree_root_file_name,
+                        m_output_bit_folder_path / s_tree_root_file_name,
                         m_satisfying_input_paths[i]
                     ));
             }
@@ -778,6 +786,7 @@ namespace boolean_ai
 
     };
 
+    // Define static fields of output_bit_manager
     std::string output_bit_manager::s_tree_root_file_name("root.bin");
     std::string output_bit_manager::s_satisfying_input_paths_file_name("satisfying-input-paths.bin");
 
@@ -961,6 +970,7 @@ namespace boolean_ai
 
     };
 
+    // Define static fields of solution_manager
     std::string solution_manager::s_batch_index_file_name("batch-index.bin");
 
 }

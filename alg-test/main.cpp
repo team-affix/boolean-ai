@@ -2,9 +2,9 @@
 #include <iostream>
 #include <assert.h>
 #include <numeric>
-#include "boolean-ai/cache.h"
-#include <fstream>
-#include "cereal/archives/binary.hpp"
+
+size_t boolean_ai::INPUT_CACHE_SIZE = 1000;
+size_t boolean_ai::TREE_CACHE_SIZE = 1000;
 
 void test_literal_product_equivalence(
 
@@ -60,422 +60,117 @@ void test_literal_product_equivalence(
     }
 }
 
-void test_data_partitioning(
+void test_cache(
 
 )
 {
-    std::vector<boolean_ai::raw_example> l_raw_examples =
-    {
-        {{0, 0, 0, 0}, {0, 0, 0}},
-        {{0, 0, 0, 1}, {0, 0, 1}},
-        {{0, 0, 1, 0}, {0, 1, 0}},
-        {{0, 0, 1, 1}, {0, 1, 1}},
-        {{0, 1, 0, 0}, {0, 1, 0}},
-        {{0, 1, 0, 1}, {0, 1, 0}},
-        {{0, 1, 1, 0}, {1, 1, 0}},
-        {{0, 1, 1, 1}, {0, 1, 0}},
-        {{1, 0, 0, 0}, {1, 1, 0}},
-        {{1, 0, 0, 1}, {1, 1, 0}},
-        {{1, 0, 1, 0}, {1, 1, 0}},
-        {{1, 0, 1, 1}, {0, 1, 0}},
-        {{1, 1, 0, 0}, {1, 1, 0}},
-        {{1, 1, 0, 1}, {1, 1, 1}},
-        {{1, 1, 1, 0}, {1, 1, 0}},
-        {{1, 1, 1, 1}, {0, 1, 0}},
-    };
+    namespace fs = std::filesystem;
+
+    // Construct and use the cache inside its own scope.
 
     {
-        auto l_first_satisfying = &l_raw_examples[6].m_input;
-        auto l_last_satisfying = &l_raw_examples[14].m_input;
+        cache<fs::path, std::string> l_cache(
+            3,
+            [&](const fs::path& a_path)
+            {
+                std::ifstream l_ifs(a_path, std::ios::binary);
 
-        auto l_first_unsatisfying = &l_raw_examples[0].m_input;
-        auto l_last_unsatisfying = &l_raw_examples[15].m_input;
+                cereal::BinaryInputArchive l_archive(l_ifs);
 
-        boolean_ai::partitioned_example_set l_partitioned_example_set(
-            l_raw_examples,
-            0
+                std::string l_result;
+
+                l_archive(l_result);
+
+                l_ifs.close();
+
+                return std::move(l_result);
+
+            },
+            [&](const fs::path& a_path, const std::string& a_string)
+            {
+                std::ofstream l_ofs(a_path, std::ios::binary);
+
+                cereal::BinaryOutputArchive l_archive(l_ofs);
+
+                l_archive(a_string);
+
+                l_ofs.close();
+
+            }
         );
-        
-        assert((std::vector<bool>*)l_partitioned_example_set.m_satisfying_inputs.front() == l_first_satisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_satisfying_inputs.back() == l_last_satisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_unprocessed_unsatisfying_inputs.front() == l_first_unsatisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_unprocessed_unsatisfying_inputs.back() == l_last_unsatisfying);
 
-    }
-
-    {
-        auto l_first_satisfying = &l_raw_examples[2].m_input;
-        auto l_last_satisfying = &l_raw_examples[15].m_input;
-
-        auto l_first_unsatisfying = &l_raw_examples[0].m_input;
-        auto l_last_unsatisfying = &l_raw_examples[1].m_input;
-
-        boolean_ai::partitioned_example_set l_partitioned_example_set(
-            l_raw_examples,
-            1
-        );
-        
-        assert((std::vector<bool>*)l_partitioned_example_set.m_satisfying_inputs.front() == l_first_satisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_satisfying_inputs.back() == l_last_satisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_unprocessed_unsatisfying_inputs.front() == l_first_unsatisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_unprocessed_unsatisfying_inputs.back() == l_last_unsatisfying);
-
-    }
-
-    {
-        auto l_first_satisfying = &l_raw_examples[1].m_input;
-        auto l_last_satisfying = &l_raw_examples[13].m_input;
-
-        auto l_first_unsatisfying = &l_raw_examples[0].m_input;
-        auto l_last_unsatisfying = &l_raw_examples[15].m_input;
-
-        boolean_ai::partitioned_example_set l_partitioned_example_set(
-            l_raw_examples,
-            2
-        );
-        
-        assert((std::vector<bool>*)l_partitioned_example_set.m_satisfying_inputs.front() == l_first_satisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_satisfying_inputs.back() == l_last_satisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_unprocessed_unsatisfying_inputs.front() == l_first_unsatisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_unprocessed_unsatisfying_inputs.back() == l_last_unsatisfying);
-
-    }
-
-}
-
-void test_get_covering_product(
-
-)
-{
-    {
-        std::vector<boolean_ai::raw_example> l_raw_examples =
+        try
         {
-            {{0, 0, 0, 0}, {0, 0, 0}},
-            {{0, 0, 0, 1}, {0, 0, 1}},
-            {{0, 0, 1, 1}, {0, 1, 1}},
-            {{0, 1, 1, 1}, {0, 1, 0}},
-            {{1, 0, 0, 1}, {1, 1, 0}}, // Using this one as our satisfying example of focus
-            {{1, 0, 1, 0}, {1, 1, 0}},
-            {{1, 0, 1, 1}, {0, 1, 0}},
-            {{1, 1, 1, 0}, {1, 1, 0}},
-            {{1, 1, 1, 1}, {0, 1, 0}},
-        };
+            // Test lookup of non-existent key
+            l_cache.get("testing123.bin");
+            throw std::runtime_error("Error: lookup of non-existent key worked.");
+        }
+        catch(std::exception)
+        { }
 
-        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
-
-        boolean_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
-
-        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unprocessed_unsatisfying_inputs);
-
-        // This call only takes into account a SINGLE satisfying input and ALL unsatisfying inputs.
-        boolean_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
-            l_partitioned_example_set.m_satisfying_inputs[0]);
-    
-        assert(l_covering_product.literals() == std::vector({ boolean_ai::literal(0, false), boolean_ai::literal(2, true) }));
-    
-    }
-
-    {
-        std::vector<boolean_ai::raw_example> l_raw_examples =
         {
-            {{0, 0, 0, 0}, {0, 0, 0}},
-            {{0, 0, 0, 1}, {0, 0, 1}},
-            {{0, 0, 1, 1}, {0, 1, 1}},
-            {{0, 1, 1, 1}, {0, 1, 0}},
-            {{1, 0, 0, 1}, {1, 1, 0}}, 
-            {{1, 0, 1, 0}, {1, 1, 0}}, // Using this one as our satisfying example of focus
-            {{1, 0, 1, 1}, {0, 1, 0}},
-            {{1, 1, 1, 0}, {1, 1, 0}},
-            {{1, 1, 1, 1}, {0, 1, 0}},
-        };
+            // Test insertion
 
-        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
+            cache<fs::path, std::string>::entry l_insertion_0 = l_cache.insert("testing1.bin", "jake1");
+            
+            // Test modification of the entry returned by the insertion.
+            l_insertion_0->push_back('1');
 
-        boolean_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
+            l_cache.insert("testing2.bin", "jake2");
+            l_cache.insert("testing3.bin", "jake3");
 
-        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unprocessed_unsatisfying_inputs);
+            // This file should not yet exist. Only after the size
+            // of the cache has been exceeded will it be created.
+            assert(!fs::exists("testing1.bin"));
 
-        // This call only takes into account a SINGLE satisfying input and ALL unsatisfying inputs.
-        boolean_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
-            l_partitioned_example_set.m_satisfying_inputs[1]);
-    
-        assert(l_covering_product.literals() == std::vector({ boolean_ai::literal(3, true), boolean_ai::literal(0, false) }));
-    
-    }
+            // On this insertion, the least recently accessed (inserted) entry should be pushed to LTS,
+            // since the maximum size of the cache is 3 and this will be the 4th insertion.
+            l_cache.insert("testing4.bin", "jake4");
 
-    {
-        std::vector<boolean_ai::raw_example> l_raw_examples =
+            // This file should now exist.
+            assert(fs::exists("testing1.bin"));
+            
+            l_cache.insert("testing5.bin", "jake5");
+
+        }
+
         {
-            {{0, 0, 0, 0}, {0, 0, 0}},
-            {{0, 0, 0, 1}, {0, 0, 1}},
-            {{0, 0, 1, 1}, {0, 1, 1}},
-            {{0, 1, 1, 1}, {0, 1, 0}},
-            {{1, 0, 0, 1}, {1, 1, 0}}, 
-            {{1, 0, 1, 0}, {1, 1, 0}},
-            {{1, 0, 1, 1}, {0, 1, 0}},
-            {{1, 1, 1, 0}, {1, 1, 0}}, // Using this one as our satisfying example of focus
-            {{1, 1, 1, 1}, {0, 1, 0}},
-        };
+            // Test lookup
 
-        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
+            cache<fs::path, std::string>::entry l_lookup_0 = l_cache.get("testing1.bin");
 
-        boolean_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
+            assert(*l_lookup_0 == "jake11");
 
-        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unprocessed_unsatisfying_inputs);
+            cache<fs::path, std::string>::entry l_lookup_1 = l_cache.get("testing2.bin");
 
-        // This call only takes into account a SINGLE satisfying input and ALL unsatisfying inputs.
-        boolean_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
-            l_partitioned_example_set.m_satisfying_inputs[2]);
-    
-        assert(l_covering_product.literals() == std::vector({ boolean_ai::literal(3, true), boolean_ai::literal(0, false) }));
-    
-    }
+            assert(*l_lookup_1 == "jake2");
 
-    {
-        std::vector<boolean_ai::raw_example> l_raw_examples =
-        {
-            {{0, 0, 0, 0}, {0, 0, 0}},
-            {{0, 0, 0, 1}, {0, 0, 1}},
-            {{0, 0, 1, 0}, {0, 1, 0}},
-            {{0, 0, 1, 1}, {0, 1, 1}},
-            {{0, 1, 0, 0}, {0, 1, 0}},
-            {{0, 1, 0, 1}, {0, 1, 0}},
-            {{0, 1, 1, 0}, {1, 1, 0}}, // Using this one as our satisfying example of focus
-            {{0, 1, 1, 1}, {0, 1, 0}},
-            {{1, 0, 0, 0}, {1, 1, 0}},
-            {{1, 0, 0, 1}, {1, 1, 0}},
-            {{1, 0, 1, 0}, {1, 1, 0}},
-            {{1, 0, 1, 1}, {0, 1, 0}},
-            {{1, 1, 0, 0}, {1, 1, 0}},
-            {{1, 1, 0, 1}, {1, 1, 1}},
-            {{1, 1, 1, 0}, {1, 1, 0}},
-            {{1, 1, 1, 1}, {0, 1, 0}},
-        };
+            cache<fs::path, std::string>::entry l_lookup_2 = l_cache.get("testing5.bin");
 
-        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
+            assert(*l_lookup_2 == "jake5");
 
-        boolean_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
-
-        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unprocessed_unsatisfying_inputs);
-
-        // This call only takes into account a SINGLE satisfying input and ALL unsatisfying inputs.
-        boolean_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
-            l_partitioned_example_set.m_satisfying_inputs[0]);
-    
-        assert(l_covering_product.literals() == std::vector({ boolean_ai::literal(3, true), boolean_ai::literal(1, false), boolean_ai::literal(2, false) }));
-    
-    }
-
-    {
-        // In this example, the only position in which there is a satisfying input is when minterm 0'123' is satisfied.
-        // Therefore, what we derive should equal this minterm. No generalization can take place here.
-        std::vector<boolean_ai::raw_example> l_raw_examples =
-        {
-            {{0, 0, 0, 0}, {0, 0, 0}},
-            {{0, 0, 0, 1}, {0, 0, 1}},
-            {{0, 0, 1, 0}, {0, 1, 0}},
-            {{0, 0, 1, 1}, {0, 1, 1}},
-            {{0, 1, 0, 0}, {0, 1, 0}},
-            {{0, 1, 0, 1}, {0, 1, 0}},
-            {{0, 1, 1, 0}, {1, 1, 0}}, // Using this one as our satisfying example of focus
-            {{0, 1, 1, 1}, {0, 1, 0}},
-            {{1, 0, 0, 0}, {0, 1, 0}},
-            {{1, 0, 0, 1}, {0, 1, 0}},
-            {{1, 0, 1, 0}, {0, 1, 0}},
-            {{1, 0, 1, 1}, {0, 1, 0}},
-            {{1, 1, 0, 0}, {0, 1, 0}},
-            {{1, 1, 0, 1}, {0, 1, 1}},
-            {{1, 1, 1, 0}, {0, 1, 0}},
-            {{1, 1, 1, 1}, {0, 1, 0}},
-        };
-
-        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
-
-        boolean_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
-
-        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unprocessed_unsatisfying_inputs);
-
-        // This call only takes into account a SINGLE satisfying input and ALL unsatisfying inputs.
-        boolean_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
-            l_partitioned_example_set.m_satisfying_inputs[0]);
-    
-        assert(l_covering_product.literals() == 
-            std::vector({ 
-                boolean_ai::literal(0, true),
-                boolean_ai::literal(1, false),
-                boolean_ai::literal(2, false),
-                boolean_ai::literal(3, true) }));
-    
-    }
-
-    {
-        // In this example, the only position in which there is a satisfying input is when minterm 0'123' is satisfied.
-        // Therefore, what we derive should equal this minterm. No generalization can take place here.
-        std::vector<boolean_ai::raw_example> l_raw_examples =
-        {
-            {{0, 0, 0, 0}, {0, 0, 0}},
-            {{0, 0, 0, 1}, {0, 0, 1}},
-            {{0, 0, 1, 0}, {0, 1, 0}}, // Using this one as our satisfying example of focus
-            {{0, 0, 1, 1}, {0, 1, 1}},
-            {{0, 1, 0, 0}, {0, 1, 0}},
-            {{0, 1, 0, 1}, {0, 1, 0}},
-            {{0, 1, 1, 0}, {1, 1, 0}},
-            {{0, 1, 1, 1}, {0, 1, 0}},
-            {{1, 0, 0, 0}, {0, 1, 0}},
-            {{1, 0, 0, 1}, {0, 1, 0}},
-            {{1, 0, 1, 0}, {0, 1, 0}},
-            {{1, 0, 1, 1}, {0, 1, 0}},
-            {{1, 1, 0, 0}, {0, 1, 0}},
-            {{1, 1, 0, 1}, {0, 1, 1}},
-            {{1, 1, 1, 0}, {0, 1, 0}},
-            {{1, 1, 1, 1}, {0, 1, 0}},
-        };
-
-        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 1);
-
-        boolean_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
-
-        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unprocessed_unsatisfying_inputs);
-
-        // This call only takes into account a SINGLE satisfying input and ALL unsatisfying inputs.
-        boolean_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
-            l_partitioned_example_set.m_satisfying_inputs[0]);
-    
-        assert(l_covering_product.literals() == 
-            std::vector({ 
-                boolean_ai::literal(2, false) }));
-    
-    }
-
-}
-
-void test_generalize(
-
-)
-{
-    {
-        std::vector<boolean_ai::raw_example> l_raw_examples =
-        {
-            {{0, 0, 0, 0}, {0, 0, 0}},
-            {{0, 0, 0, 1}, {0, 0, 1}},
-            {{0, 0, 1, 1}, {0, 1, 1}},
-            {{0, 1, 1, 1}, {0, 1, 0}},
-            {{1, 0, 0, 1}, {1, 1, 0}},
-            {{1, 0, 1, 0}, {1, 1, 0}},
-            {{1, 0, 1, 1}, {0, 1, 0}},
-            {{1, 1, 1, 0}, {1, 1, 0}},
-            {{1, 1, 1, 1}, {0, 1, 0}},
-        };
-
-        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
-
-        // This call takes into account all satisfying inputs and ALL unsatisfying inputs.
-        boolean_ai::sum_of_products l_generalized = boolean_ai::generalize(
-            l_partitioned_example_set);
-    
-        // There should be three covering products since there are three satisfying inputs for
-        // output bit 0.
-        assert(l_generalized.literal_products().size() == 3);
-
-        assert(l_generalized.literal_products()[0].literals() == std::vector({
-            boolean_ai::literal(0, false), boolean_ai::literal(2, true)
-        }));
-        
-        assert(l_generalized.literal_products()[1].literals() == std::vector({
-            boolean_ai::literal(3, true), boolean_ai::literal(0, false)
-        }));
-
-        assert(l_generalized.literal_products()[2].literals() == std::vector({
-            boolean_ai::literal(3, true), boolean_ai::literal(0, false)
-        }));
-    
-    }
-
-    {
-        std::vector<boolean_ai::raw_example> l_raw_examples =
-        {
-            {{0, 0, 0, 0}, {0, 0, 0}},
-            {{0, 0, 0, 1}, {0, 0, 1}},
-            {{0, 0, 1, 1}, {0, 1, 1}},
-            {{0, 1, 1, 1}, {0, 1, 0}},
-            {{1, 0, 0, 1}, {1, 1, 0}},
-            {{1, 0, 1, 0}, {1, 1, 0}},
-            {{1, 0, 1, 1}, {0, 1, 0}},
-            {{1, 1, 1, 0}, {1, 1, 0}},
-            {{1, 1, 1, 1}, {0, 1, 0}},
-        };
-
-        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 1);
-
-        // This call takes into account all satisfying inputs and ALL unsatisfying inputs.
-        boolean_ai::sum_of_products l_generalized = boolean_ai::generalize(l_partitioned_example_set);
-    
-        // There should be seven covering products since there are seven satisfying inputs for
-        // output bit 1.
-        assert(l_generalized.literal_products().size() == 7);
-
-        assert(l_generalized.literal_products()[0].literals() == std::vector({
-            boolean_ai::literal(2, false)
-        }));
-        
-        assert(l_generalized.literal_products()[1].literals() == std::vector({
-            boolean_ai::literal(1, false)
-        }));
-
-        assert(l_generalized.literal_products()[2].literals() == std::vector({
-            boolean_ai::literal(0, false)
-        }));
-
-        assert(l_generalized.literal_products()[3].literals() == std::vector({
-            boolean_ai::literal(0, false)
-        }));
-
-        assert(l_generalized.literal_products()[4].literals() == std::vector({
-            boolean_ai::literal(0, false)
-        }));
-
-        assert(l_generalized.literal_products()[5].literals() == std::vector({
-            boolean_ai::literal(0, false)
-        }));
-
-        assert(l_generalized.literal_products()[6].literals() == std::vector({
-            boolean_ai::literal(0, false)
-        }));
-    
-    }
-
-    {
-        std::vector<boolean_ai::raw_example> l_raw_examples =
-        {
-            {{0, 0, 0, 0}, {0, 0, 0}},
-            {{0, 0, 0, 1}, {0, 0, 1}},
-            {{0, 0, 1, 1}, {0, 1, 1}},
-            {{0, 1, 1, 1}, {0, 1, 0}},
-            {{1, 0, 0, 1}, {1, 1, 0}},
-            {{1, 0, 1, 0}, {1, 1, 0}},
-            {{1, 0, 1, 1}, {0, 1, 0}},
-            {{1, 1, 1, 0}, {1, 1, 0}},
-            {{1, 1, 1, 1}, {0, 1, 0}},
-        };
-
-        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 2);
-
-        // This call takes into account all satisfying inputs and ALL unsatisfying inputs.
-        boolean_ai::sum_of_products l_generalized = boolean_ai::generalize(l_partitioned_example_set);
-    
-        // There should be two covering products since there are two satisfying inputs for
-        // output bit 2.
-        assert(l_generalized.literal_products().size() == 2);
-
-        assert(l_generalized.literal_products()[0].literals() == std::vector({
-            boolean_ai::literal(0, true), boolean_ai::literal(1, true), boolean_ai::literal(3, false)
-        }));
-        
-        assert(l_generalized.literal_products()[1].literals() == std::vector({
-            boolean_ai::literal(0, true), boolean_ai::literal(1, true), boolean_ai::literal(2, false)
-        }));
+        }
 
     }
+
+    // Since cache was destructed, all contents should exist in LTS.
+    
+    assert(fs::exists("testing1.bin"));
+    assert(fs::exists("testing2.bin"));
+    assert(fs::exists("testing3.bin"));
+    assert(fs::exists("testing4.bin"));
+    assert(fs::exists("testing5.bin"));
+
+    // Clean up after unit testing.
+    fs::remove("testing1.bin");
+    fs::remove("testing2.bin");
+    fs::remove("testing3.bin");
+    fs::remove("testing4.bin");
+    fs::remove("testing5.bin");
+
+
+    
+
 }
 
 void test_generalize_multi_output(
@@ -495,8 +190,19 @@ void test_generalize_multi_output(
         {{1, 1, 1, 1}, {0, 1, 0}},
     };
 
-    // This call takes into account all satisfying inputs and ALL unsatisfying inputs.
-    boolean_ai::sum_of_products_string l_generalized = boolean_ai::generalize(l_raw_examples);
+    boolean_ai::sum_of_products_string l_generalized;
+
+    {
+        boolean_ai::solution_manager l_solution_manager("example-solution/", 3);
+
+        l_solution_manager.add_examples(l_raw_examples);
+
+        // This call takes into account all satisfying inputs and ALL unsatisfying inputs.
+        l_generalized = l_solution_manager.generalize();
+    }
+
+    assert(std::filesystem::exists("example-solution/"));
+    assert(std::filesystem::exists("example-solution/0"));
 
     // There should be three covering products since there are three satisfying inputs for
     // output bit 0.
@@ -565,100 +271,7 @@ void test_generalize_multi_output(
     assert(l_generalized.sums_of_products()[1].literal_products().size() == 3);
     assert(l_generalized.sums_of_products()[2].literal_products().size() == 2);
 
-}
-
-void test_temporal_cache(
-
-)
-{
-    namespace fs = std::filesystem;
-
-    std::filesystem::path l_raw_example_0_path = std::filesystem::absolute("test_disk_lookup_0.bin");
-    std::filesystem::path l_raw_example_1_path = std::filesystem::absolute("test_disk_lookup_1.bin");
-    std::filesystem::path l_raw_example_2_path = std::filesystem::absolute("test_disk_lookup_2.bin");
-
-    boolean_ai::raw_example l_raw_example_0({{1, 0, 0, 1}, {0, 1, 1}});
-    boolean_ai::raw_example l_raw_example_1({{1, 1, 1, 1}, {0, 0, 0}});
-    boolean_ai::raw_example l_raw_example_2({{1, 1, 0, 1}, {0, 0, 1}});
-
-    {
-        // Serialize the first raw example
-        std::ofstream l_ofs(l_raw_example_0_path, std::ios::binary);
-        cereal::BinaryOutputArchive l_output_archive(l_ofs);
-        l_output_archive(l_raw_example_0);
-    }
-
-    {
-        // Serialize the second raw example
-        std::ofstream l_ofs(l_raw_example_1_path, std::ios::binary);
-        cereal::BinaryOutputArchive l_output_archive(l_ofs);
-        l_output_archive(l_raw_example_1);
-    }
-
-    {
-        // Serialize the third raw example
-        std::ofstream l_ofs(l_raw_example_2_path, std::ios::binary);
-        cereal::BinaryOutputArchive l_output_archive(l_ofs);
-        l_output_archive(l_raw_example_2);
-    }
-
-    auto l_perform_disk_lookup = [&](
-            const std::filesystem::path& a_file_path
-        )
-        {
-            // Look up raw example set on disk.
-            boolean_ai::raw_example l_result;
-
-            if (!fs::exists(a_file_path))
-                throw std::runtime_error("Error: could not find file.");
-
-            std::ifstream l_ifs(a_file_path.c_str(), std::ios::binary);
-            
-            cereal::BinaryInputArchive l_archive(l_ifs);
-
-            l_archive(l_result);
-
-            return l_result;
-
-        };
-        
-    boolean_ai::temporal_cache<std::filesystem::path, boolean_ai::raw_example> l_raw_example_cache(
-        l_perform_disk_lookup,
-        2
-    );
-
-    boolean_ai::raw_example l_raw_example_0_recovered_0 = l_raw_example_cache.evaluate(l_raw_example_0_path);
-
-    fs::remove(l_raw_example_0_path);
-
-    // The only way this should be able to recover the data is from cache,
-    // since the file has been removed from disk.
-    boolean_ai::raw_example l_raw_example_0_recovered_1 = l_raw_example_cache.evaluate(l_raw_example_0_path);
-
-    assert(l_raw_example_0 == l_raw_example_0_recovered_0 && l_raw_example_0 == l_raw_example_0_recovered_1);
-
-    boolean_ai::raw_example l_raw_example_1_recovered = l_raw_example_cache.evaluate(l_raw_example_1_path);
-
-    assert(l_raw_example_1 == l_raw_example_1_recovered);
-
-    // This will be the third call to evaluate the cache. The cache is size 2.
-    // This means that the first raw example should no longer be in the cache.
-    boolean_ai::raw_example l_raw_example_2_recovered = l_raw_example_cache.evaluate(l_raw_example_2_path);
-
-    assert(l_raw_example_2 == l_raw_example_2_recovered);
-
-    try
-    {
-        boolean_ai::raw_example l_raw_example_0_recovered_2 = l_raw_example_cache.evaluate(l_raw_example_0_path);
-        
-        // We should not make it to this point.
-        throw std::runtime_error("Error: temporal cache unit test failed.");
-
-    }
-    catch(std::exception) {}
-
-    fs::remove(l_raw_example_1_path);
-    fs::remove(l_raw_example_2_path);
+    std::filesystem::remove_all("example-solution/");
 
 }
 
@@ -667,11 +280,8 @@ void unit_test_main(
 )
 {
     test_literal_product_equivalence();
-    test_data_partitioning();
-    test_get_covering_product();
-    test_generalize();
+    test_cache();
     test_generalize_multi_output();
-    test_temporal_cache();
 }
 
 void add_8_bit_numbers_test(
@@ -737,9 +347,20 @@ void add_8_bit_numbers_test(
 
         auto l_start =  std::chrono::high_resolution_clock::now();
 
-        boolean_ai::sum_of_products_string l_sops = boolean_ai::generalize(l_raw_examples);
+        boolean_ai::sum_of_products_string l_sops;
+
+        {
+            boolean_ai::solution_manager l_solution_manager("add-8-bit-numbers/", 9);
+
+            l_solution_manager.add_examples(l_raw_examples);
+
+            l_sops = l_solution_manager.generalize();
+        }
         
         auto l_stop =  std::chrono::high_resolution_clock::now();
+
+        // Delete the solution directory
+        std::filesystem::remove_all("add-8-bit-numbers/");
 
         auto l_duration = std::chrono::duration_cast<std::chrono::milliseconds>(l_stop - l_start).count();
 
