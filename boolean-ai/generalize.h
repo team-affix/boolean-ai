@@ -12,6 +12,13 @@
 
 namespace boolean_ai
 {
+    // Extern fields which should be user-defined.
+    extern size_t INPUT_CACHE_SIZE;
+    extern size_t TREE_CACHE_SIZE;
+
+    // Inline fields
+    inline std::string i_batch_index_file_name = "batch-index.bin";
+
     /// @brief A class which selects a bit by index and also states whether or not it will be inverting that bit.
     class literal
     {
@@ -576,10 +583,9 @@ namespace boolean_ai
     class output_bit_manager
     {
     private:
-        // Static fields which should be user-defined.
+        // Static fields.
         static std::string s_tree_root_file_name;
         static std::string s_satisfying_input_paths_file_name;
-        static size_t      s_tree_cache_size;
 
         // Member variables which are defined at construction time
         std::filesystem::path m_output_bit_folder_path;
@@ -617,7 +623,7 @@ namespace boolean_ai
         ) :
             m_output_bit_folder_path(a_output_bit_folder_path),
             m_input_cache(a_input_cache),
-            m_tree_cache(s_tree_cache_size,
+            m_tree_cache(TREE_CACHE_SIZE,
                 [&, a_output_bit_folder_path](
                     const std::filesystem::path& a_path
                 )
@@ -657,7 +663,7 @@ namespace boolean_ai
 
                 // Create the root node of the unsatisfying coverage tree.
                 m_tree_cache.insert(
-                    a_output_bit_folder_path / s_tree_root_file_name,
+                    a_output_bit_folder_path / i_tree_root_file_name,
                     unsatisfying_coverage_tree(a_input_cache)
                 );
                 
@@ -667,7 +673,7 @@ namespace boolean_ai
 
             // If the file does exist, load the satisfying input paths vector.
             
-            std::ifstream l_ifs(a_output_bit_folder_path / s_satisfying_input_paths_file_name, std::ios::binary);
+            std::ifstream l_ifs(a_output_bit_folder_path / i_satisfying_input_paths_file_name, std::ios::binary);
             
             cereal::BinaryInputArchive l_archive(l_ifs);
 
@@ -698,7 +704,7 @@ namespace boolean_ai
         )
         {
             cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_tree =
-                m_tree_cache.get(m_output_bit_folder_path / s_tree_root_file_name);
+                m_tree_cache.get(m_output_bit_folder_path / i_tree_root_file_name);
 
             l_tree->add_coverage(a_unsatisfying_input_paths);
 
@@ -719,7 +725,7 @@ namespace boolean_ai
             {
                 l_covering_products.push_back(
                     covering_product(
-                        m_output_bit_folder_path / s_tree_root_file_name,
+                        m_output_bit_folder_path / i_tree_root_file_name,
                         m_satisfying_input_paths[i]
                     ));
             }
@@ -772,14 +778,16 @@ namespace boolean_ai
 
     };
 
+    std::string output_bit_manager::s_tree_root_file_name("root.bin");
+    std::string output_bit_manager::s_satisfying_input_paths_file_name("satisfying-input-paths.bin");
+
     /// @brief This class is responsible for maintaining
     ///        all input files, and utilizing the
     ///        output_bit_manager class to create generalizing sums of products.
     class solution_manager
     {
     private:
-        // Static fields which are to be user-defined.
-        static size_t s_input_cache_size;
+        // Static fields.
         static std::string s_batch_index_file_name;
 
         // Member variables defined at construction-time
@@ -797,7 +805,7 @@ namespace boolean_ai
 
         )
         {
-            std::ofstream l_ofs(m_solution_path / s_batch_index_file_name, std::ios::binary);
+            std::ofstream l_ofs(m_solution_path / i_batch_index_file_name, std::ios::binary);
 
             cereal::BinaryOutputArchive l_archive(l_ofs);
 
@@ -817,7 +825,7 @@ namespace boolean_ai
             m_solution_path(a_solution_path),
             m_output_bit_count(a_output_bit_count),
             m_input_cache(
-                s_input_cache_size,
+                INPUT_CACHE_SIZE,
                 [&, a_solution_path](
                     const std::filesystem::path& a_path
                 )
@@ -857,7 +865,7 @@ namespace boolean_ai
                 return;
             }
 
-            std::ifstream l_ifs(a_solution_path / s_batch_index_file_name, std::ios::binary);
+            std::ifstream l_ifs(a_solution_path / i_batch_index_file_name, std::ios::binary);
 
             cereal::BinaryInputArchive l_archive(l_ifs);
 
@@ -952,6 +960,8 @@ namespace boolean_ai
         }
 
     };
+
+    std::string solution_manager::s_batch_index_file_name("batch-index.bin");
 
 }
 
