@@ -376,15 +376,16 @@ namespace boolean_ai
 
     }
 
+    /// @brief Tree for use in speeding up generation of covering products.
     class unsatisfying_coverage_tree
     {
     private:
-        cache<std::filesystem::path, input>&                      m_input_cache;
-        std::vector<literal>                                      m_covering_literals;
-        std::vector<std::filesystem::path>                        m_unprocessed_coverage;
-        size_t                                                    m_coverage_size = 0;
-        std::map<literal, size_t>                                 m_subcoverage_sizes;
-        std::map<literal, std::filesystem::path>                  m_subcoverages;
+        cache<std::filesystem::path, input>&     m_input_cache;
+        std::vector<literal>                     m_covering_literals;
+        std::vector<std::filesystem::path>       m_unprocessed_coverage;
+        size_t                                   m_coverage_size = 0;
+        std::map<literal, size_t>                m_subcoverage_sizes;
+        std::map<literal, std::filesystem::path> m_subcoverages;
 
     public:
         unsatisfying_coverage_tree(
@@ -569,6 +570,9 @@ namespace boolean_ai
 
     };
 
+    /// @brief Provides methods for managing unsatisfying coverage trees,
+    ///        as well as the satisfying input paths vector. Also provides
+    ///        functionality for creating a generalizing sum.
     class output_bit_manager
     {
     private:
