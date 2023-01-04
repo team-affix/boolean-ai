@@ -599,7 +599,7 @@ namespace boolean_ai
                     l_file_name += '-';
                 }
 
-                l_file_name += l_literal.index();
+                l_file_name += std::to_string(l_literal.index());
                 
                 l_file_name += '_';
             }
