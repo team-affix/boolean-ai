@@ -11,50 +11,50 @@ void test_literal_product_equivalence(
 )
 {
     {
-        digital_ai::literal_product l_literal_product_0({
-            digital_ai::literal(0, false),
-            digital_ai::literal(1, false),
-            digital_ai::literal(2, false),});
-        digital_ai::literal_product l_literal_product_1({
-            digital_ai::literal(0, false),
-            digital_ai::literal(2, false),
-            digital_ai::literal(1, false),});
+        boolean_ai::literal_product l_literal_product_0({
+            boolean_ai::literal(0, false),
+            boolean_ai::literal(1, false),
+            boolean_ai::literal(2, false),});
+        boolean_ai::literal_product l_literal_product_1({
+            boolean_ai::literal(0, false),
+            boolean_ai::literal(2, false),
+            boolean_ai::literal(1, false),});
         assert(l_literal_product_0 == l_literal_product_1);
     }
 
     {
-        digital_ai::literal_product l_literal_product_0({
-            digital_ai::literal(0, false),
-            digital_ai::literal(1, false),
-            digital_ai::literal(2, false),});
-        digital_ai::literal_product l_literal_product_1({
-            digital_ai::literal(2, false),
-            digital_ai::literal(1, false),});
+        boolean_ai::literal_product l_literal_product_0({
+            boolean_ai::literal(0, false),
+            boolean_ai::literal(1, false),
+            boolean_ai::literal(2, false),});
+        boolean_ai::literal_product l_literal_product_1({
+            boolean_ai::literal(2, false),
+            boolean_ai::literal(1, false),});
         assert(l_literal_product_0 != l_literal_product_1);
     }
 
     {
-        digital_ai::literal_product l_literal_product_0({
-            digital_ai::literal(0, false),
-            digital_ai::literal(3, true),
-            digital_ai::literal(2, false),});
-        digital_ai::literal_product l_literal_product_1({
-            digital_ai::literal(3, true),
-            digital_ai::literal(2, false),
-            digital_ai::literal(0, false),});
+        boolean_ai::literal_product l_literal_product_0({
+            boolean_ai::literal(0, false),
+            boolean_ai::literal(3, true),
+            boolean_ai::literal(2, false),});
+        boolean_ai::literal_product l_literal_product_1({
+            boolean_ai::literal(3, true),
+            boolean_ai::literal(2, false),
+            boolean_ai::literal(0, false),});
         assert(l_literal_product_0 == l_literal_product_1);
     }
 
     {
-        digital_ai::literal_product l_literal_product_0({
-            digital_ai::literal(0, false),
-            digital_ai::literal(3, true),
-            digital_ai::literal(2, false)
+        boolean_ai::literal_product l_literal_product_0({
+            boolean_ai::literal(0, false),
+            boolean_ai::literal(3, true),
+            boolean_ai::literal(2, false)
         });
-        digital_ai::literal_product l_literal_product_1({
-            digital_ai::literal(3, false),
-            digital_ai::literal(2, false),
-            digital_ai::literal(0, false)
+        boolean_ai::literal_product l_literal_product_1({
+            boolean_ai::literal(3, false),
+            boolean_ai::literal(2, false),
+            boolean_ai::literal(0, false)
         });
         assert(l_literal_product_0 != l_literal_product_1);
     }
@@ -64,7 +64,7 @@ void test_data_partitioning(
 
 )
 {
-    std::vector<digital_ai::raw_example> l_raw_examples =
+    std::vector<boolean_ai::raw_example> l_raw_examples =
     {
         {{0, 0, 0, 0}, {0, 0, 0}},
         {{0, 0, 0, 1}, {0, 0, 1}},
@@ -91,15 +91,15 @@ void test_data_partitioning(
         auto l_first_unsatisfying = &l_raw_examples[0].m_input;
         auto l_last_unsatisfying = &l_raw_examples[15].m_input;
 
-        digital_ai::partitioned_example_set l_partitioned_example_set(
+        boolean_ai::partitioned_example_set l_partitioned_example_set(
             l_raw_examples,
             0
         );
         
         assert((std::vector<bool>*)l_partitioned_example_set.m_satisfying_inputs.front() == l_first_satisfying);
         assert((std::vector<bool>*)l_partitioned_example_set.m_satisfying_inputs.back() == l_last_satisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_unsatisfying_inputs.front() == l_first_unsatisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_unsatisfying_inputs.back() == l_last_unsatisfying);
+        assert((std::vector<bool>*)l_partitioned_example_set.m_unprocessed_unsatisfying_inputs.front() == l_first_unsatisfying);
+        assert((std::vector<bool>*)l_partitioned_example_set.m_unprocessed_unsatisfying_inputs.back() == l_last_unsatisfying);
 
     }
 
@@ -110,15 +110,15 @@ void test_data_partitioning(
         auto l_first_unsatisfying = &l_raw_examples[0].m_input;
         auto l_last_unsatisfying = &l_raw_examples[1].m_input;
 
-        digital_ai::partitioned_example_set l_partitioned_example_set(
+        boolean_ai::partitioned_example_set l_partitioned_example_set(
             l_raw_examples,
             1
         );
         
         assert((std::vector<bool>*)l_partitioned_example_set.m_satisfying_inputs.front() == l_first_satisfying);
         assert((std::vector<bool>*)l_partitioned_example_set.m_satisfying_inputs.back() == l_last_satisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_unsatisfying_inputs.front() == l_first_unsatisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_unsatisfying_inputs.back() == l_last_unsatisfying);
+        assert((std::vector<bool>*)l_partitioned_example_set.m_unprocessed_unsatisfying_inputs.front() == l_first_unsatisfying);
+        assert((std::vector<bool>*)l_partitioned_example_set.m_unprocessed_unsatisfying_inputs.back() == l_last_unsatisfying);
 
     }
 
@@ -129,15 +129,15 @@ void test_data_partitioning(
         auto l_first_unsatisfying = &l_raw_examples[0].m_input;
         auto l_last_unsatisfying = &l_raw_examples[15].m_input;
 
-        digital_ai::partitioned_example_set l_partitioned_example_set(
+        boolean_ai::partitioned_example_set l_partitioned_example_set(
             l_raw_examples,
             2
         );
         
         assert((std::vector<bool>*)l_partitioned_example_set.m_satisfying_inputs.front() == l_first_satisfying);
         assert((std::vector<bool>*)l_partitioned_example_set.m_satisfying_inputs.back() == l_last_satisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_unsatisfying_inputs.front() == l_first_unsatisfying);
-        assert((std::vector<bool>*)l_partitioned_example_set.m_unsatisfying_inputs.back() == l_last_unsatisfying);
+        assert((std::vector<bool>*)l_partitioned_example_set.m_unprocessed_unsatisfying_inputs.front() == l_first_unsatisfying);
+        assert((std::vector<bool>*)l_partitioned_example_set.m_unprocessed_unsatisfying_inputs.back() == l_last_unsatisfying);
 
     }
 
@@ -148,7 +148,7 @@ void test_get_covering_product(
 )
 {
     {
-        std::vector<digital_ai::raw_example> l_raw_examples =
+        std::vector<boolean_ai::raw_example> l_raw_examples =
         {
             {{0, 0, 0, 0}, {0, 0, 0}},
             {{0, 0, 0, 1}, {0, 0, 1}},
@@ -161,22 +161,22 @@ void test_get_covering_product(
             {{1, 1, 1, 1}, {0, 1, 0}},
         };
 
-        digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
+        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
 
-        digital_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
+        boolean_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
 
-        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unsatisfying_inputs);
+        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unprocessed_unsatisfying_inputs);
 
         // This call only takes into account a SINGLE satisfying input and ALL unsatisfying inputs.
-        digital_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
+        boolean_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
             l_partitioned_example_set.m_satisfying_inputs[0]);
     
-        assert(l_covering_product.literals() == std::vector({ digital_ai::literal(0, false), digital_ai::literal(2, true) }));
+        assert(l_covering_product.literals() == std::vector({ boolean_ai::literal(0, false), boolean_ai::literal(2, true) }));
     
     }
 
     {
-        std::vector<digital_ai::raw_example> l_raw_examples =
+        std::vector<boolean_ai::raw_example> l_raw_examples =
         {
             {{0, 0, 0, 0}, {0, 0, 0}},
             {{0, 0, 0, 1}, {0, 0, 1}},
@@ -189,22 +189,22 @@ void test_get_covering_product(
             {{1, 1, 1, 1}, {0, 1, 0}},
         };
 
-        digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
+        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
 
-        digital_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
+        boolean_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
 
-        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unsatisfying_inputs);
+        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unprocessed_unsatisfying_inputs);
 
         // This call only takes into account a SINGLE satisfying input and ALL unsatisfying inputs.
-        digital_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
+        boolean_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
             l_partitioned_example_set.m_satisfying_inputs[1]);
     
-        assert(l_covering_product.literals() == std::vector({ digital_ai::literal(3, true), digital_ai::literal(0, false) }));
+        assert(l_covering_product.literals() == std::vector({ boolean_ai::literal(3, true), boolean_ai::literal(0, false) }));
     
     }
 
     {
-        std::vector<digital_ai::raw_example> l_raw_examples =
+        std::vector<boolean_ai::raw_example> l_raw_examples =
         {
             {{0, 0, 0, 0}, {0, 0, 0}},
             {{0, 0, 0, 1}, {0, 0, 1}},
@@ -217,22 +217,22 @@ void test_get_covering_product(
             {{1, 1, 1, 1}, {0, 1, 0}},
         };
 
-        digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
+        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
 
-        digital_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
+        boolean_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
 
-        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unsatisfying_inputs);
+        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unprocessed_unsatisfying_inputs);
 
         // This call only takes into account a SINGLE satisfying input and ALL unsatisfying inputs.
-        digital_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
+        boolean_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
             l_partitioned_example_set.m_satisfying_inputs[2]);
     
-        assert(l_covering_product.literals() == std::vector({ digital_ai::literal(3, true), digital_ai::literal(0, false) }));
+        assert(l_covering_product.literals() == std::vector({ boolean_ai::literal(3, true), boolean_ai::literal(0, false) }));
     
     }
 
     {
-        std::vector<digital_ai::raw_example> l_raw_examples =
+        std::vector<boolean_ai::raw_example> l_raw_examples =
         {
             {{0, 0, 0, 0}, {0, 0, 0}},
             {{0, 0, 0, 1}, {0, 0, 1}},
@@ -252,24 +252,24 @@ void test_get_covering_product(
             {{1, 1, 1, 1}, {0, 1, 0}},
         };
 
-        digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
+        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
 
-        digital_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
+        boolean_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
 
-        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unsatisfying_inputs);
+        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unprocessed_unsatisfying_inputs);
 
         // This call only takes into account a SINGLE satisfying input and ALL unsatisfying inputs.
-        digital_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
+        boolean_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
             l_partitioned_example_set.m_satisfying_inputs[0]);
     
-        assert(l_covering_product.literals() == std::vector({ digital_ai::literal(3, true), digital_ai::literal(1, false), digital_ai::literal(2, false) }));
+        assert(l_covering_product.literals() == std::vector({ boolean_ai::literal(3, true), boolean_ai::literal(1, false), boolean_ai::literal(2, false) }));
     
     }
 
     {
         // In this example, the only position in which there is a satisfying input is when minterm 0'123' is satisfied.
         // Therefore, what we derive should equal this minterm. No generalization can take place here.
-        std::vector<digital_ai::raw_example> l_raw_examples =
+        std::vector<boolean_ai::raw_example> l_raw_examples =
         {
             {{0, 0, 0, 0}, {0, 0, 0}},
             {{0, 0, 0, 1}, {0, 0, 1}},
@@ -289,29 +289,29 @@ void test_get_covering_product(
             {{1, 1, 1, 1}, {0, 1, 0}},
         };
 
-        digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
+        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
 
-        digital_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
+        boolean_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
 
-        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unsatisfying_inputs);
+        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unprocessed_unsatisfying_inputs);
 
         // This call only takes into account a SINGLE satisfying input and ALL unsatisfying inputs.
-        digital_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
+        boolean_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
             l_partitioned_example_set.m_satisfying_inputs[0]);
     
         assert(l_covering_product.literals() == 
             std::vector({ 
-                digital_ai::literal(0, true),
-                digital_ai::literal(1, false),
-                digital_ai::literal(2, false),
-                digital_ai::literal(3, true) }));
+                boolean_ai::literal(0, true),
+                boolean_ai::literal(1, false),
+                boolean_ai::literal(2, false),
+                boolean_ai::literal(3, true) }));
     
     }
 
     {
         // In this example, the only position in which there is a satisfying input is when minterm 0'123' is satisfied.
         // Therefore, what we derive should equal this minterm. No generalization can take place here.
-        std::vector<digital_ai::raw_example> l_raw_examples =
+        std::vector<boolean_ai::raw_example> l_raw_examples =
         {
             {{0, 0, 0, 0}, {0, 0, 0}},
             {{0, 0, 0, 1}, {0, 0, 1}},
@@ -331,19 +331,19 @@ void test_get_covering_product(
             {{1, 1, 1, 1}, {0, 1, 0}},
         };
 
-        digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 1);
+        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 1);
 
-        digital_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
+        boolean_ai::unsatisfying_coverage_tree l_literal_coverage_tree;
 
-        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unsatisfying_inputs);
+        l_literal_coverage_tree.add_coverage(l_partitioned_example_set.m_unprocessed_unsatisfying_inputs);
 
         // This call only takes into account a SINGLE satisfying input and ALL unsatisfying inputs.
-        digital_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
+        boolean_ai::literal_product l_covering_product = l_literal_coverage_tree.covering_product(
             l_partitioned_example_set.m_satisfying_inputs[0]);
     
         assert(l_covering_product.literals() == 
             std::vector({ 
-                digital_ai::literal(2, false) }));
+                boolean_ai::literal(2, false) }));
     
     }
 
@@ -354,7 +354,7 @@ void test_generalize(
 )
 {
     {
-        std::vector<digital_ai::raw_example> l_raw_examples =
+        std::vector<boolean_ai::raw_example> l_raw_examples =
         {
             {{0, 0, 0, 0}, {0, 0, 0}},
             {{0, 0, 0, 1}, {0, 0, 1}},
@@ -367,10 +367,10 @@ void test_generalize(
             {{1, 1, 1, 1}, {0, 1, 0}},
         };
 
-        digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
+        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 0);
 
         // This call takes into account all satisfying inputs and ALL unsatisfying inputs.
-        digital_ai::sum_of_products l_generalized = digital_ai::generalize(
+        boolean_ai::sum_of_products l_generalized = boolean_ai::generalize(
             l_partitioned_example_set);
     
         // There should be three covering products since there are three satisfying inputs for
@@ -378,21 +378,21 @@ void test_generalize(
         assert(l_generalized.literal_products().size() == 3);
 
         assert(l_generalized.literal_products()[0].literals() == std::vector({
-            digital_ai::literal(0, false), digital_ai::literal(2, true)
+            boolean_ai::literal(0, false), boolean_ai::literal(2, true)
         }));
         
         assert(l_generalized.literal_products()[1].literals() == std::vector({
-            digital_ai::literal(3, true), digital_ai::literal(0, false)
+            boolean_ai::literal(3, true), boolean_ai::literal(0, false)
         }));
 
         assert(l_generalized.literal_products()[2].literals() == std::vector({
-            digital_ai::literal(3, true), digital_ai::literal(0, false)
+            boolean_ai::literal(3, true), boolean_ai::literal(0, false)
         }));
     
     }
 
     {
-        std::vector<digital_ai::raw_example> l_raw_examples =
+        std::vector<boolean_ai::raw_example> l_raw_examples =
         {
             {{0, 0, 0, 0}, {0, 0, 0}},
             {{0, 0, 0, 1}, {0, 0, 1}},
@@ -405,47 +405,47 @@ void test_generalize(
             {{1, 1, 1, 1}, {0, 1, 0}},
         };
 
-        digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 1);
+        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 1);
 
         // This call takes into account all satisfying inputs and ALL unsatisfying inputs.
-        digital_ai::sum_of_products l_generalized = digital_ai::generalize(l_partitioned_example_set);
+        boolean_ai::sum_of_products l_generalized = boolean_ai::generalize(l_partitioned_example_set);
     
         // There should be seven covering products since there are seven satisfying inputs for
         // output bit 1.
         assert(l_generalized.literal_products().size() == 7);
 
         assert(l_generalized.literal_products()[0].literals() == std::vector({
-            digital_ai::literal(2, false)
+            boolean_ai::literal(2, false)
         }));
         
         assert(l_generalized.literal_products()[1].literals() == std::vector({
-            digital_ai::literal(1, false)
+            boolean_ai::literal(1, false)
         }));
 
         assert(l_generalized.literal_products()[2].literals() == std::vector({
-            digital_ai::literal(0, false)
+            boolean_ai::literal(0, false)
         }));
 
         assert(l_generalized.literal_products()[3].literals() == std::vector({
-            digital_ai::literal(0, false)
+            boolean_ai::literal(0, false)
         }));
 
         assert(l_generalized.literal_products()[4].literals() == std::vector({
-            digital_ai::literal(0, false)
+            boolean_ai::literal(0, false)
         }));
 
         assert(l_generalized.literal_products()[5].literals() == std::vector({
-            digital_ai::literal(0, false)
+            boolean_ai::literal(0, false)
         }));
 
         assert(l_generalized.literal_products()[6].literals() == std::vector({
-            digital_ai::literal(0, false)
+            boolean_ai::literal(0, false)
         }));
     
     }
 
     {
-        std::vector<digital_ai::raw_example> l_raw_examples =
+        std::vector<boolean_ai::raw_example> l_raw_examples =
         {
             {{0, 0, 0, 0}, {0, 0, 0}},
             {{0, 0, 0, 1}, {0, 0, 1}},
@@ -458,21 +458,21 @@ void test_generalize(
             {{1, 1, 1, 1}, {0, 1, 0}},
         };
 
-        digital_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 2);
+        boolean_ai::partitioned_example_set l_partitioned_example_set(l_raw_examples, 2);
 
         // This call takes into account all satisfying inputs and ALL unsatisfying inputs.
-        digital_ai::sum_of_products l_generalized = digital_ai::generalize(l_partitioned_example_set);
+        boolean_ai::sum_of_products l_generalized = boolean_ai::generalize(l_partitioned_example_set);
     
         // There should be two covering products since there are two satisfying inputs for
         // output bit 2.
         assert(l_generalized.literal_products().size() == 2);
 
         assert(l_generalized.literal_products()[0].literals() == std::vector({
-            digital_ai::literal(0, true), digital_ai::literal(1, true), digital_ai::literal(3, false)
+            boolean_ai::literal(0, true), boolean_ai::literal(1, true), boolean_ai::literal(3, false)
         }));
         
         assert(l_generalized.literal_products()[1].literals() == std::vector({
-            digital_ai::literal(0, true), digital_ai::literal(1, true), digital_ai::literal(2, false)
+            boolean_ai::literal(0, true), boolean_ai::literal(1, true), boolean_ai::literal(2, false)
         }));
 
     }
@@ -482,7 +482,7 @@ void test_generalize_multi_output(
 
 )
 {
-    std::vector<digital_ai::raw_example> l_raw_examples =
+    std::vector<boolean_ai::raw_example> l_raw_examples =
     {
         {{0, 0, 0, 0}, {0, 0, 0}},
         {{0, 0, 0, 1}, {0, 0, 1}},
@@ -496,22 +496,22 @@ void test_generalize_multi_output(
     };
 
     // This call takes into account all satisfying inputs and ALL unsatisfying inputs.
-    digital_ai::sum_of_products_string l_generalized = digital_ai::generalize(l_raw_examples);
+    boolean_ai::sum_of_products_string l_generalized = boolean_ai::generalize(l_raw_examples);
 
     // There should be three covering products since there are three satisfying inputs for
     // output bit 0.
     assert(l_generalized.sums_of_products()[0].literal_products().size() == 3);
 
     assert(l_generalized.sums_of_products()[0].literal_products()[0].literals() == std::vector({
-        digital_ai::literal(0, false), digital_ai::literal(2, true)
+        boolean_ai::literal(0, false), boolean_ai::literal(2, true)
     }));
     
     assert(l_generalized.sums_of_products()[0].literal_products()[1].literals() == std::vector({
-        digital_ai::literal(3, true), digital_ai::literal(0, false)
+        boolean_ai::literal(3, true), boolean_ai::literal(0, false)
     }));
 
     assert(l_generalized.sums_of_products()[0].literal_products()[2].literals() == std::vector({
-        digital_ai::literal(3, true), digital_ai::literal(0, false)
+        boolean_ai::literal(3, true), boolean_ai::literal(0, false)
     }));
 
     // There should be seven covering products since there are seven satisfying inputs for
@@ -519,31 +519,31 @@ void test_generalize_multi_output(
     assert(l_generalized.sums_of_products()[1].literal_products().size() == 7);
 
     assert(l_generalized.sums_of_products()[1].literal_products()[0].literals() == std::vector({
-        digital_ai::literal(2, false)
+        boolean_ai::literal(2, false)
     }));
     
     assert(l_generalized.sums_of_products()[1].literal_products()[1].literals() == std::vector({
-        digital_ai::literal(1, false)
+        boolean_ai::literal(1, false)
     }));
 
     assert(l_generalized.sums_of_products()[1].literal_products()[2].literals() == std::vector({
-        digital_ai::literal(0, false)
+        boolean_ai::literal(0, false)
     }));
 
     assert(l_generalized.sums_of_products()[1].literal_products()[3].literals() == std::vector({
-        digital_ai::literal(0, false)
+        boolean_ai::literal(0, false)
     }));
 
     assert(l_generalized.sums_of_products()[1].literal_products()[4].literals() == std::vector({
-        digital_ai::literal(0, false)
+        boolean_ai::literal(0, false)
     }));
 
     assert(l_generalized.sums_of_products()[1].literal_products()[5].literals() == std::vector({
-        digital_ai::literal(0, false)
+        boolean_ai::literal(0, false)
     }));
 
     assert(l_generalized.sums_of_products()[1].literal_products()[6].literals() == std::vector({
-        digital_ai::literal(0, false)
+        boolean_ai::literal(0, false)
     }));
 
     // There should be two covering products since there are two satisfying inputs for
@@ -551,11 +551,11 @@ void test_generalize_multi_output(
     assert(l_generalized.sums_of_products()[2].literal_products().size() == 2);
 
     assert(l_generalized.sums_of_products()[2].literal_products()[0].literals() == std::vector({
-        digital_ai::literal(0, true), digital_ai::literal(1, true), digital_ai::literal(3, false)
+        boolean_ai::literal(0, true), boolean_ai::literal(1, true), boolean_ai::literal(3, false)
     }));
     
     assert(l_generalized.sums_of_products()[2].literal_products()[1].literals() == std::vector({
-        digital_ai::literal(0, true), digital_ai::literal(1, true), digital_ai::literal(2, false)
+        boolean_ai::literal(0, true), boolean_ai::literal(1, true), boolean_ai::literal(2, false)
     }));
 
 
@@ -577,9 +577,9 @@ void test_temporal_cache(
     std::filesystem::path l_raw_example_1_path = std::filesystem::absolute("test_disk_lookup_1.bin");
     std::filesystem::path l_raw_example_2_path = std::filesystem::absolute("test_disk_lookup_2.bin");
 
-    digital_ai::raw_example l_raw_example_0({{1, 0, 0, 1}, {0, 1, 1}});
-    digital_ai::raw_example l_raw_example_1({{1, 1, 1, 1}, {0, 0, 0}});
-    digital_ai::raw_example l_raw_example_2({{1, 1, 0, 1}, {0, 0, 1}});
+    boolean_ai::raw_example l_raw_example_0({{1, 0, 0, 1}, {0, 1, 1}});
+    boolean_ai::raw_example l_raw_example_1({{1, 1, 1, 1}, {0, 0, 0}});
+    boolean_ai::raw_example l_raw_example_2({{1, 1, 0, 1}, {0, 0, 1}});
 
     {
         // Serialize the first raw example
@@ -607,7 +607,7 @@ void test_temporal_cache(
         )
         {
             // Look up raw example set on disk.
-            digital_ai::raw_example l_result;
+            boolean_ai::raw_example l_result;
 
             if (!fs::exists(a_file_path))
                 throw std::runtime_error("Error: could not find file.");
@@ -622,34 +622,34 @@ void test_temporal_cache(
 
         };
         
-    digital_ai::temporal_cache<std::filesystem::path, digital_ai::raw_example> l_raw_example_cache(
+    boolean_ai::temporal_cache<std::filesystem::path, boolean_ai::raw_example> l_raw_example_cache(
         l_perform_disk_lookup,
         2
     );
 
-    digital_ai::raw_example l_raw_example_0_recovered_0 = l_raw_example_cache.evaluate(l_raw_example_0_path);
+    boolean_ai::raw_example l_raw_example_0_recovered_0 = l_raw_example_cache.evaluate(l_raw_example_0_path);
 
     fs::remove(l_raw_example_0_path);
 
     // The only way this should be able to recover the data is from cache,
     // since the file has been removed from disk.
-    digital_ai::raw_example l_raw_example_0_recovered_1 = l_raw_example_cache.evaluate(l_raw_example_0_path);
+    boolean_ai::raw_example l_raw_example_0_recovered_1 = l_raw_example_cache.evaluate(l_raw_example_0_path);
 
     assert(l_raw_example_0 == l_raw_example_0_recovered_0 && l_raw_example_0 == l_raw_example_0_recovered_1);
 
-    digital_ai::raw_example l_raw_example_1_recovered = l_raw_example_cache.evaluate(l_raw_example_1_path);
+    boolean_ai::raw_example l_raw_example_1_recovered = l_raw_example_cache.evaluate(l_raw_example_1_path);
 
     assert(l_raw_example_1 == l_raw_example_1_recovered);
 
     // This will be the third call to evaluate the cache. The cache is size 2.
     // This means that the first raw example should no longer be in the cache.
-    digital_ai::raw_example l_raw_example_2_recovered = l_raw_example_cache.evaluate(l_raw_example_2_path);
+    boolean_ai::raw_example l_raw_example_2_recovered = l_raw_example_cache.evaluate(l_raw_example_2_path);
 
     assert(l_raw_example_2 == l_raw_example_2_recovered);
 
     try
     {
-        digital_ai::raw_example l_raw_example_0_recovered_2 = l_raw_example_cache.evaluate(l_raw_example_0_path);
+        boolean_ai::raw_example l_raw_example_0_recovered_2 = l_raw_example_cache.evaluate(l_raw_example_0_path);
         
         // We should not make it to this point.
         throw std::runtime_error("Error: temporal cache unit test failed.");
@@ -718,7 +718,7 @@ void add_8_bit_numbers_test(
 
     for (size_t l_training_sets_count = 1000; l_training_sets_count < 100000; l_training_sets_count += 1000)
     {
-        std::vector<digital_ai::raw_example> l_raw_examples;
+        std::vector<boolean_ai::raw_example> l_raw_examples;
 
         for (int i = 0; i < l_training_sets_count; i++)
         {
@@ -737,7 +737,7 @@ void add_8_bit_numbers_test(
 
         auto l_start =  std::chrono::high_resolution_clock::now();
 
-        digital_ai::sum_of_products_string l_sops = digital_ai::generalize(l_raw_examples);
+        boolean_ai::sum_of_products_string l_sops = boolean_ai::generalize(l_raw_examples);
         
         auto l_stop =  std::chrono::high_resolution_clock::now();
 

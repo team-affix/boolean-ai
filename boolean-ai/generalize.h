@@ -10,7 +10,7 @@
 #include <iostream>
 #include <math.h>
 
-namespace digital_ai
+namespace boolean_ai
 {
     /// @brief A class which selects a bit by index and also states whether or not it will be inverting that bit.
     class literal
@@ -380,7 +380,6 @@ namespace digital_ai
     {
     private:
         cache<std::filesystem::path, input>&                      m_input_cache;
-        cache<std::filesystem::path, unsatisfying_coverage_tree>& m_tree_cache;
         std::vector<literal>                                      m_covering_literals;
         std::vector<std::filesystem::path>                        m_unprocessed_coverage;
         size_t                                                    m_coverage_size = 0;
@@ -390,14 +389,26 @@ namespace digital_ai
     public:
         unsatisfying_coverage_tree(
             cache<std::filesystem::path, input>& a_input_cache,
-            cache<std::filesystem::path, unsatisfying_coverage_tree>& a_tree_cache,
             const std::vector<literal>& a_covering_literals = {}
         ) :
             m_input_cache(a_input_cache),
-            m_tree_cache(a_tree_cache),
             m_covering_literals(a_covering_literals)
         {
             
+        }
+        
+        const size_t& coverage_size(
+
+        ) const
+        {
+            return m_coverage_size;
+        }
+
+        const std::vector<literal>& covering_literals(
+
+        ) const
+        {
+            return m_covering_literals;
         }
 
         void add_coverage(
@@ -414,6 +425,7 @@ namespace digital_ai
         }
 
         std::filesystem::path coverage_minimizing_subtree_path(
+            cache<std::filesystem::path, unsatisfying_coverage_tree>& a_tree_cache,
             cache<std::filesystem::path, input>::entry a_satisfying_input
         )
         {
@@ -424,7 +436,7 @@ namespace digital_ai
             {
                 // Only realize the subcoverages if it must be done,
                 // assuming the unprocessed coverage has a size larger than zero.
-                realize_subcoverages();
+                propagate_coverage(a_tree_cache);
             }
             
             std::map<literal, size_t>::iterator l_coverage_minimizing_iterator = m_subcoverage_sizes.begin();
@@ -451,20 +463,6 @@ namespace digital_ai
             return m_subcoverages[l_coverage_minimizing_iterator->first];
             
         }
-        
-        const size_t& coverage_size(
-
-        ) const
-        {
-            return m_coverage_size;
-        }
-
-        const std::vector<literal>& covering_literals(
-
-        ) const
-        {
-            return m_covering_literals;
-        }
 
         template<typename ARCHIVE>
         void serialize(
@@ -479,8 +477,8 @@ namespace digital_ai
         }
 
     private:
-        void realize_subcoverages(
-            
+        void propagate_coverage(
+            cache<std::filesystem::path, unsatisfying_coverage_tree>& a_tree_cache
         )
         {
             // First, get the raw literal coverage.
@@ -516,10 +514,10 @@ namespace digital_ai
                 {
                     // Create the subtree
                     unsatisfying_coverage_tree l_subtree(
-                        m_input_cache, m_tree_cache, l_covering_literals);
+                        m_input_cache, l_covering_literals);
 
                     // Insert the subtree into cache
-                    m_tree_cache.insert(l_subtree.file_name(), l_subtree);
+                    a_tree_cache.insert(l_subtree.file_name(), l_subtree);
 
                     // Insert the subtree path into the list of subtree paths.
                     l_subtree_iterator =
@@ -531,7 +529,7 @@ namespace digital_ai
                 }
 
                 cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_subtree_entry =
-                    m_tree_cache.get(l_subtree_iterator->second);
+                    a_tree_cache.get(l_subtree_iterator->second);
 
                 m_subcoverage_sizes[l_it->first] += l_it->second.size();
 
@@ -571,87 +569,385 @@ namespace digital_ai
 
     };
 
-    literal_product covering_product(
-        cache<std::filesystem::path, input>& a_input_cache,
-        cache<std::filesystem::path, unsatisfying_coverage_tree>& a_tree_cache,
-        const std::filesystem::path& a_tree_path,
-        const std::filesystem::path& a_satisfying_input_path
-    )
+    class output_bit_manager
     {
-        std::filesystem::path l_coverage_minimizing_tree_path;
+    private:
+        // Static fields which should be user-defined.
+        static std::string s_tree_root_file_name;
+        static std::string s_satisfying_input_paths_file_name;
+        static size_t      s_tree_cache_size;
 
-        // LEAVE THIS IT'S OWN SCOPE. IT IS IMPORTANT
-        // We want the cache::entry types to fall out of scope as that will unlock
-        // the actual entries in the cache. If we do not do this before
-        // Continuing the recursion, then all nodes used in the recursion will have their
-        // respective entries locked in cache.
+        // Member variables which are defined at construction time
+        std::filesystem::path m_output_bit_folder_path;
+        cache<std::filesystem::path, input>& m_input_cache;
+        cache<std::filesystem::path, unsatisfying_coverage_tree> m_tree_cache;
+
+        // Member variables which are defined on import from file.
+        std::vector<std::filesystem::path> m_satisfying_input_paths;
+
+    public:
+        /// @brief On destruction, the satisfying input paths vector will be written to file.
+        virtual ~output_bit_manager(
+
+        )
         {
-            // Get the input from cache
-            cache<std::filesystem::path, input>::entry l_satisfying_input = 
-                a_input_cache.get(a_satisfying_input_path);
+            // On destruction, export the satisfying vector of input paths to file.
 
-            // Get this node from cache.
-            cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_tree = 
-                a_tree_cache.get(a_tree_path);
+            std::ofstream l_ofs(m_output_bit_folder_path, std::ios::binary);
 
-            if (l_tree->coverage_size() == 0)
+            cereal::BinaryOutputArchive l_archive(l_ofs);
+
+            l_archive(m_satisfying_input_paths);
+
+            l_ofs.close();
+
+        }
+
+        /// @brief On construction, the tree cache is created, and the satisfying input path
+        ///        vector is imported from file.
+        /// @param a_output_bit_folder_path 
+        /// @param a_input_cache 
+        output_bit_manager(
+            const std::filesystem::path& a_output_bit_folder_path,
+            cache<std::filesystem::path, input>& a_input_cache
+        ) :
+            m_output_bit_folder_path(a_output_bit_folder_path),
+            m_input_cache(a_input_cache),
+            m_tree_cache(s_tree_cache_size,
+                [&, a_output_bit_folder_path](
+                    const std::filesystem::path& a_path
+                )
+                {
+                    std::ifstream l_ifs(a_output_bit_folder_path / a_path, std::ios::binary);
+                    
+                    cereal::BinaryInputArchive l_archive(l_ifs);
+
+                    unsatisfying_coverage_tree l_tree(a_input_cache);
+
+                    l_archive(l_tree);
+
+                    l_ifs.close();
+
+                    return std::move(l_tree);
+
+                },
+                [&, a_output_bit_folder_path](
+                    const std::filesystem::path& a_path, const unsatisfying_coverage_tree& a_tree
+                )
+                {
+                    std::ofstream l_ofs(a_output_bit_folder_path / a_path, std::ios::binary);
+
+                    cereal::BinaryOutputArchive l_archive(l_ofs);
+
+                    l_archive(a_tree);
+
+                    l_ofs.close();
+
+                }
+            )
+        {
+            if (!std::filesystem::exists(a_output_bit_folder_path))
             {
-                // This node holds information about the minimally covering product.
-                return literal_product(l_tree->covering_literals());
+                // If the local folder does not exist, create it, then return. Do not try to load anything.
+                std::filesystem::create_directory(a_output_bit_folder_path);
+
+                // Create the root node of the unsatisfying coverage tree.
+                m_tree_cache.insert(
+                    a_output_bit_folder_path / s_tree_root_file_name,
+                    unsatisfying_coverage_tree(a_input_cache)
+                );
+                
+                return;
+
             }
 
-            l_coverage_minimizing_tree_path = l_tree->coverage_minimizing_subtree_path(l_satisfying_input);
+            // If the file does exist, load the satisfying input paths vector.
+            
+            std::ifstream l_ifs(a_output_bit_folder_path / s_satisfying_input_paths_file_name, std::ios::binary);
+            
+            cereal::BinaryInputArchive l_archive(l_ifs);
+
+            l_archive(m_satisfying_input_paths);
+
+            l_ifs.close();
+
         }
 
-        // Use recursion.
-        return covering_product(
-            a_input_cache, a_tree_cache, l_coverage_minimizing_tree_path, a_satisfying_input_path);
+        /// @brief This function adds satisfying input paths to a vector which exists in LTS. 
+        /// @param a_satisfying_input_paths 
+        void add_satisfying_coverage(
+            const std::vector<std::filesystem::path>& a_satisfying_input_paths
+        )
+        {
+            // Push the satisfying inputs onto the list.
+            m_satisfying_input_paths.insert(
+                m_satisfying_input_paths.end(),
+                a_satisfying_input_paths.begin(),
+                a_satisfying_input_paths.end());
 
-    }
+        }
 
-    /// @brief Gets a sum of covering products which when coupled, will cover all satisfying inputs.
-    ///        this will not cover any unsatisfying inputs. It will however cover some unresolved inputs.
-    ///        This is where the "generalization" occurred.
-    /// @param a_partitioned_example_set
-    /// @return
-    sum_of_products generalize(
-        const partitioned_example_set& a_partitioned_example_set
-    )
+        /// @brief This function adds unsatisfying coverage to the tree which exists in LTS.
+        /// @param a_unsatisfying_input_paths 
+        void add_unsatisfying_coverage(
+            const std::vector<std::filesystem::path>& a_unsatisfying_input_paths
+        )
+        {
+            cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_tree =
+                m_tree_cache.get(m_output_bit_folder_path / s_tree_root_file_name);
+
+            l_tree->add_coverage(a_unsatisfying_input_paths);
+
+        }
+
+        /// @brief Gets a sum of products which will cover all satisfying inputs.
+        ///        This will not cover any unsatisfying inputs. It will however cover some unresolved inputs.
+        ///        This is where the "generalization" occurred.
+        /// @param a_partitioned_example_set
+        /// @return
+        sum_of_products generalize(
+            
+        )
+        {
+            std::vector<literal_product> l_covering_products;
+            
+            for (int i = 0; i < m_satisfying_input_paths.size(); i++)
+            {
+                l_covering_products.push_back(
+                    covering_product(
+                        m_output_bit_folder_path / s_tree_root_file_name,
+                        m_satisfying_input_paths[i]
+                    ));
+            }
+
+            return sum_of_products(l_covering_products);
+
+        }
+
+    private:
+        /// @brief This function retrieves a covering product with few literals to use
+        ///        in the covering sum.
+        /// @param a_tree_path 
+        /// @param a_satisfying_input_path 
+        /// @return 
+        literal_product covering_product(
+            const std::filesystem::path& a_tree_path,
+            const std::filesystem::path& a_satisfying_input_path
+        )
+        {
+            std::filesystem::path l_coverage_minimizing_tree_path;
+
+            // LEAVE THIS IT'S OWN SCOPE. IT IS IMPORTANT
+            // We want the cache::entry types to fall out of scope as that will unlock
+            // the actual entries in the cache. If we do not do this before
+            // Continuing the recursion, then all nodes used in the recursion will have their
+            // respective entries locked in cache.
+            {
+                // Get the input from cache
+                cache<std::filesystem::path, input>::entry l_satisfying_input = 
+                    m_input_cache.get(a_satisfying_input_path);
+
+                // Get this node from cache.
+                cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_tree = 
+                    m_tree_cache.get(a_tree_path);
+
+                if (l_tree->coverage_size() == 0)
+                {
+                    // This node holds information about the minimally covering product.
+                    return literal_product(l_tree->covering_literals());
+                }
+
+                l_coverage_minimizing_tree_path = l_tree->coverage_minimizing_subtree_path(m_tree_cache, l_satisfying_input);
+
+            }
+
+            // Use recursion.
+            return covering_product(l_coverage_minimizing_tree_path, a_satisfying_input_path);
+
+        }
+
+    };
+
+    /// @brief This class is responsible for maintaining
+    ///        all input files, and utilizing the
+    ///        output_bit_manager class to create generalizing sums of products.
+    class solution_manager
     {
-        unsatisfying_coverage_tree l_literal_coverage_tree;
+    private:
+        // Static fields which are to be user-defined.
+        static size_t s_input_cache_size;
+        static std::string s_batch_index_file_name;
 
-        l_literal_coverage_tree.add_coverage(a_partitioned_example_set.m_unsatisfying_inputs);
+        // Member variables defined at construction-time
+        std::filesystem::path m_solution_path;
+        cache<std::filesystem::path, input> m_input_cache;
+        size_t m_output_bit_count = 0;
 
-        std::vector<literal_product> l_covering_products;
+        // Member variables defined by importing from file.
+        size_t m_batch_index = 0;
         
-        for (int i = 0; i < a_partitioned_example_set.m_satisfying_inputs.size(); i++)
+    public:
+        /// @brief The destruction of this object will cause the member variable m_batch_index to be
+        ///        written to file. Then, in the future it will be recalled from LTS.
+        virtual ~solution_manager(
+
+        )
         {
-            l_covering_products.push_back(
-                l_literal_coverage_tree.covering_product(a_partitioned_example_set.m_satisfying_inputs[i]));
+            std::ofstream l_ofs(m_solution_path / s_batch_index_file_name, std::ios::binary);
+
+            cereal::BinaryOutputArchive l_archive(l_ofs);
+
+            l_archive(m_batch_index);
+
+            l_ofs.close();
+
         }
 
-        return sum_of_products(l_covering_products);
+        /// @brief Constructs the input cache, and imports the variable m_batch_size from file.
+        /// @param a_solution_path 
+        /// @param a_output_bit_count 
+        solution_manager(
+            const std::filesystem::path& a_solution_path,
+            const size_t& a_output_bit_count
+        ) :
+            m_solution_path(a_solution_path),
+            m_output_bit_count(a_output_bit_count),
+            m_input_cache(
+                s_input_cache_size,
+                [&, a_solution_path](
+                    const std::filesystem::path& a_path
+                )
+                {
+                    std::ifstream l_ifs(a_solution_path / a_path, std::ios::binary);
 
-    }
+                    cereal::BinaryInputArchive l_archive(l_ifs);
 
-    /// @brief This will produce a vector of covering sums which each are designated to the bit output
-    ///        associated with their indices.
-    /// @param a_additional_raw_examples 
-    /// @return 
-    sum_of_products_string generalize(
-        const std::vector<raw_example>& a_additional_raw_examples
-    )
-    {
-        std::vector<sum_of_products> l_output_bit_functions;
+                    input l_input;
 
-        for (int i = 0; i < a_additional_raw_examples[0].m_output.size(); i++)
+                    l_archive(l_input);
+
+                    l_ifs.close();
+
+                    return std::move(l_input);
+
+                },
+                [&, a_solution_path](
+                    const std::filesystem::path& a_path, const input& a_input
+                )
+                {
+                    std::ofstream l_ofs(a_solution_path / a_path, std::ios::binary);
+
+                    cereal::BinaryOutputArchive l_archive(l_ofs);
+
+                    l_archive(a_input);
+
+                    l_ofs.close();
+
+                }
+            )
         {
-            l_output_bit_functions.push_back(generalize(partitioned_example_set(a_additional_raw_examples, i)));
+            if (!std::filesystem::exists(a_solution_path))
+            {
+                // Create the directory if it does not already exist.
+                std::filesystem::create_directory(a_solution_path);
+                return;
+            }
+
+            std::ifstream l_ifs(a_solution_path / s_batch_index_file_name, std::ios::binary);
+
+            cereal::BinaryInputArchive l_archive(l_ifs);
+
+            l_archive(m_batch_index);
+
+            l_ifs.close();
+
         }
 
-        return sum_of_products_string(l_output_bit_functions);
+        /// @brief Writes the inputs to unique files, detecting for each output bit
+        ///        whether or not the input is a satisfying or unsatisfying input,
+        ///        and distributes the path to those inputs properly to each output_bit_manager.
+        /// @param a_raw_examples 
+        void add_examples(
+            const std::vector<raw_example>& a_raw_examples
+        )
+        {
+            // Create the vectors which will hold the new additions of input paths.
+            std::vector<std::vector<std::filesystem::path>> l_unsatisfying_input_paths(m_output_bit_count);
+            std::vector<std::vector<std::filesystem::path>> l_satisfying_input_paths(m_output_bit_count);
 
-    }
+            for (int i = 0; i < a_raw_examples.size(); i++)
+            {
+                const raw_example& l_raw_example = a_raw_examples[i];
+
+                // Create the unique file name for the input.
+                std::filesystem::path l_input_path = std::to_string(m_batch_index) + "_" + std::to_string(i) + ".bin";
+
+                // Insert the file name, input pair into the cache. Once this cache
+                // falls out of scope, the file name, input pair will be written to disk.
+                m_input_cache.insert(l_input_path, l_raw_example.m_input);
+
+                for (int j = 0; j < m_output_bit_count; j++)
+                {
+                    if (l_raw_example.m_output[j])
+                    {
+                        // Satisfying input
+                        l_satisfying_input_paths[j].push_back(l_input_path);
+                    }
+                    else
+                    {
+                        // Unsatisfying input
+                        l_unsatisfying_input_paths[j].push_back(l_input_path);
+                    }
+                }
+
+            }
+
+            for (int i = 0; i < m_output_bit_count; i++)
+            {
+                // Add the satisfying and unsatisfying coverage to each output bit manager.
+                output_bit_manager l_output_bit_manager = output_bit(i);
+                l_output_bit_manager.add_satisfying_coverage(l_satisfying_input_paths[i]);
+                l_output_bit_manager.add_unsatisfying_coverage(l_unsatisfying_input_paths[i]);
+            }
+
+            // Increment the batch index to prevent file name conflicts
+            // for future example additions.
+            m_batch_index++;
+
+        }
+
+        /// @brief This function forces each output_bit_manager to build a generalizing sum of products (SOP),
+        ///        which it will then concatenate into a final multi-output function.
+        /// @return 
+        sum_of_products_string generalize(
+            
+        )
+        {
+            std::vector<sum_of_products> l_sums_of_products;
+
+            for (int i = 0; i < m_output_bit_count; i++)
+            {
+                l_sums_of_products.push_back(
+                    output_bit(i).generalize()
+                );
+            }
+
+            return sum_of_products_string(l_sums_of_products);
+
+        }
+
+    private:
+        output_bit_manager output_bit(
+            const size_t& a_index
+        )
+        {
+            return output_bit_manager(
+                m_solution_path / std::to_string(a_index),
+                m_input_cache
+            );
+        }
+
+    };
 
 }
 
