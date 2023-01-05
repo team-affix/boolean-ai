@@ -4,7 +4,7 @@
 #include <numeric>
 
 size_t boolean_ai::INPUT_CACHE_SIZE = 100000;
-size_t boolean_ai::TREE_CACHE_SIZE = 100000;
+size_t boolean_ai::TREE_CACHE_SIZE = 1000000;
 
 void test_literal_product_equivalence(
 
