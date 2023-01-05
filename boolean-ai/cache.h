@@ -37,7 +37,17 @@ public:
             m_key(a_key),
             m_reference(a_reference)
         {
-            
+            m_cache.lock(a_key);
+        }
+
+        entry(
+            const entry& a_entry
+        ) :
+            m_cache(a_entry.m_cache),
+            m_key(a_entry.m_key),
+            m_reference(a_entry.m_reference)
+        {
+            m_cache.lock(a_entry.m_key);
         }
         
         VALUE& operator*(
@@ -131,9 +141,6 @@ public:
 
         }
 
-        // Increments the lock count by 1 for this key.
-        lock(a_key);
-
         return entry(*this, l_map_location->first, *l_map_location->second);
 
     }
@@ -169,9 +176,6 @@ public:
 
         // Insert the number of locks on this value. It should start out being zero.
         m_lock_counts.emplace(a_key, 0);
-
-        // Increments the lock count by 1 for this key.
-        lock(a_key);
 
         return entry(*this, l_map_location->first, *l_map_location->second);
 

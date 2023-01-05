@@ -466,7 +466,7 @@ namespace boolean_ai
 
         }
 
-        std::filesystem::path coverage_minimizing_subtree_file_name(
+        std::string coverage_minimizing_subtree_file_name(
             cache<std::filesystem::path, unsatisfying_coverage_tree>& a_tree_cache,
             cache<std::filesystem::path, input>::entry a_satisfying_input
         )
@@ -586,7 +586,7 @@ namespace boolean_ai
 
         }
 
-        std::filesystem::path file_name(
+        std::string file_name(
             
         )
         {
@@ -606,7 +606,7 @@ namespace boolean_ai
             
             l_file_name += ".bin";
 
-            return std::filesystem::path(l_file_name);
+            return l_file_name;
 
         }
 
@@ -663,7 +663,7 @@ namespace boolean_ai
                     const std::filesystem::path& a_path
                 )
                 {
-                    std::ifstream l_ifs(a_path, std::ios::binary);
+                    std::ifstream l_ifs(m_output_bit_folder_path / a_path, std::ios::binary);
                     
                     cereal::BinaryInputArchive l_archive(l_ifs);
 
@@ -680,7 +680,7 @@ namespace boolean_ai
                     const std::filesystem::path& a_path, const unsatisfying_coverage_tree& a_tree
                 )
                 {
-                    std::ofstream l_ofs(a_path, std::ios::binary);
+                    std::ofstream l_ofs(m_output_bit_folder_path / a_path, std::ios::binary);
 
                     cereal::BinaryOutputArchive l_archive(l_ofs);
 
@@ -698,7 +698,7 @@ namespace boolean_ai
 
                 // Create the root node of the unsatisfying coverage tree.
                 m_tree_cache.insert(
-                    m_output_bit_folder_path / s_tree_root_file_name,
+                    s_tree_root_file_name,
                     unsatisfying_coverage_tree(a_input_cache)
                 );
                 
@@ -739,7 +739,7 @@ namespace boolean_ai
         )
         {
             cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_tree =
-                m_tree_cache.get(m_output_bit_folder_path / s_tree_root_file_name);
+                m_tree_cache.get(s_tree_root_file_name);
 
             l_tree->add_coverage(a_unsatisfying_input_paths);
 
@@ -776,7 +776,7 @@ namespace boolean_ai
         /// @param a_satisfying_input_path 
         /// @return 
         literal_product covering_product(
-            const std::filesystem::path& a_tree_file_name,
+            const std::string& a_tree_file_name,
             const std::filesystem::path& a_satisfying_input_path
         )
         {
@@ -794,7 +794,7 @@ namespace boolean_ai
 
                 // Get this node from cache.
                 cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_tree = 
-                    m_tree_cache.get(m_output_bit_folder_path / a_tree_file_name);
+                    m_tree_cache.get(a_tree_file_name);
 
                 if (l_tree->coverage_size() == 0)
                 {
@@ -928,8 +928,7 @@ namespace boolean_ai
                 const raw_example& l_raw_example = a_raw_examples[i];
 
                 // Create the unique file name for the input.
-                std::filesystem::path l_input_path = 
-                    m_solution_path / 
+                std::filesystem::path l_input_path =
                     (std::to_string(m_batch_index) + "_" + std::to_string(i) + ".bin");
 
                 // Insert the file name, input pair into the cache. Once this cache

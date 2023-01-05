@@ -3,7 +3,7 @@ OBJECTS=$(patsubst %.cpp, %.o, $(SOURCES))
 HEADERS=$(wildcard ../boolean-ai/*.h)
 
 CPPFLAGS+=-g
-#CPPFLAGS+=-O2
+CPPFLAGS+=-O2
 CPPFLAGS+=-std=c++20
 CPPFLAGS+=-pthread
 CPPFLAGS+=-I.

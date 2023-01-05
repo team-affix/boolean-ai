@@ -3,8 +3,8 @@
 #include <assert.h>
 #include <numeric>
 
-size_t boolean_ai::INPUT_CACHE_SIZE = 1000;
-size_t boolean_ai::TREE_CACHE_SIZE = 1000;
+size_t boolean_ai::INPUT_CACHE_SIZE = 10000000;
+size_t boolean_ai::TREE_CACHE_SIZE = 10000000;
 
 void test_literal_product_equivalence(
 
@@ -408,8 +408,8 @@ int main(
 
 )
 {
-    //add_8_bit_numbers_test();
-    unit_test_main();
+    add_8_bit_numbers_test();
+    //unit_test_main();
 
     return 0;
 
