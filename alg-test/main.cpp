@@ -408,8 +408,8 @@ int main(
 
 )
 {
-    add_8_bit_numbers_test();
-    //unit_test_main();
+    //add_8_bit_numbers_test();
+    unit_test_main();
 
     return 0;
 
