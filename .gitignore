@@ -1,2 +1,3 @@
 *.o
 alg-test/main
+alg-test/add-8-bit-numbers/*

@@ -3,8 +3,8 @@
 #include <assert.h>
 #include <numeric>
 
-size_t boolean_ai::INPUT_CACHE_SIZE = 10000;
-size_t boolean_ai::TREE_CACHE_SIZE = 10000;
+size_t boolean_ai::INPUT_CACHE_SIZE = 100000;
+size_t boolean_ai::TREE_CACHE_SIZE = 10000000;
 
 void test_literal_product_equivalence(
 
@@ -325,9 +325,17 @@ void add_8_bit_numbers_test(
     // Input is 16-bit (two 8-bit strings)
     // Output is 9-bit (8-bit sum and 1-bit carry)
 
-    for (size_t l_training_sets_count = 1000; l_training_sets_count < 100000; l_training_sets_count += 1000)
+    const std::string l_solution_folder_name = "add-8-bit-numbers/";
+
+    // Delete the solution directory before training, to ensure there is no folder.
+    if (std::filesystem::exists(l_solution_folder_name))
+        std::filesystem::remove_all(l_solution_folder_name);
+
+    for (size_t l_training_sets_count = 10000; l_training_sets_count < 100000; l_training_sets_count += 1000)
     {
         std::vector<boolean_ai::raw_example> l_raw_examples;
+
+        std::cout << "Generating training data..." << std::endl;
 
         for (int i = 0; i < l_training_sets_count; i++)
         {
@@ -344,12 +352,14 @@ void add_8_bit_numbers_test(
 
         }
 
+        std::cout << "Training..." << std::endl;
+
         auto l_start =  std::chrono::high_resolution_clock::now();
 
         boolean_ai::sum_of_products_string l_sops;
 
         {
-            boolean_ai::solution_manager l_solution_manager("add-8-bit-numbers/", 9);
+            boolean_ai::solution_manager l_solution_manager(l_solution_folder_name, 9);
 
             l_solution_manager.add_examples(l_raw_examples);
 
@@ -358,14 +368,15 @@ void add_8_bit_numbers_test(
         
         auto l_stop =  std::chrono::high_resolution_clock::now();
 
-        // Delete the solution directory
-        std::filesystem::remove_all("add-8-bit-numbers/");
-
         auto l_duration = std::chrono::duration_cast<std::chrono::milliseconds>(l_stop - l_start).count();
 
         std::cout << "TRAINING SETS                : " << l_training_sets_count << std::endl;
         std::cout << "DURATION OF GENERALIZATION   : " << l_duration << std::endl;
         std::cout << "TRAINING SETS PER MILLISECOND: " << (double)l_training_sets_count / (double)l_duration << std::endl;
+        
+        // Delete the solution directory
+        std::cout << "Deleting solution directory..." << std::endl;
+        std::filesystem::remove_all(l_solution_folder_name);
 
         l_sops.simplify();
 
@@ -408,8 +419,8 @@ int main(
 
 )
 {
-    //add_8_bit_numbers_test();
-    unit_test_main();
+    add_8_bit_numbers_test();
+    //unit_test_main();
 
     return 0;
 
