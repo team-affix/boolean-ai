@@ -195,7 +195,15 @@ void test_generalize_multi_output(
         boolean_ai::solution_manager l_solution_manager("example-solution/", 3);
 
         l_solution_manager.add_examples(l_raw_examples);
+    }
+    // By exiting the above scope, all contents in cache will be saved to HDD
 
+    
+    {
+        // By constructing another solution_manager object with the same directory,
+        // the solution manager will load contents from the folder.
+        boolean_ai::solution_manager l_solution_manager("example-solution/", 3);
+        
         // This call takes into account all satisfying inputs and ALL unsatisfying inputs.
         l_generalized = l_solution_manager.generalize();
     }
