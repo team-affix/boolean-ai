@@ -426,7 +426,7 @@ namespace boolean_ai
         std::vector<std::filesystem::path>       m_unprocessed_coverage;
         size_t                                   m_coverage_size = 0;
         std::map<literal, size_t>                m_subcoverage_sizes;
-        std::map<literal, std::filesystem::path> m_subcoverages;
+        std::map<literal, std::filesystem::path> m_subcoverage_paths;
 
     public:
         unsatisfying_coverage_tree(
@@ -503,7 +503,7 @@ namespace boolean_ai
                 }
             }
 
-            return m_subcoverages[l_coverage_minimizing_iterator->first];
+            return m_subcoverage_paths[l_coverage_minimizing_iterator->first];
             
         }
 
@@ -516,7 +516,7 @@ namespace boolean_ai
             a_archive(m_unprocessed_coverage);
             a_archive(m_coverage_size);
             a_archive(m_subcoverage_sizes);
-            a_archive(m_subcoverages);
+            a_archive(m_subcoverage_paths);
         }
 
     private:
@@ -551,9 +551,9 @@ namespace boolean_ai
                 l_covering_literals.push_back(l_it->first);
 
                 // Generate subtrees for each literal coverage.
-                std::map<literal, std::filesystem::path>::iterator l_subtree_iterator = m_subcoverages.find(l_it->first);
+                std::map<literal, std::filesystem::path>::iterator l_subtree_iterator = m_subcoverage_paths.find(l_it->first);
                 
-                if (l_subtree_iterator == m_subcoverages.end())
+                if (l_subtree_iterator == m_subcoverage_paths.end())
                 {
                     // Create the subtree
                     unsatisfying_coverage_tree l_subtree(
@@ -564,7 +564,7 @@ namespace boolean_ai
 
                     // Insert the subtree path into the list of subtree paths.
                     l_subtree_iterator =
-                        m_subcoverages.emplace(l_it->first, l_subtree.file_name()).first;
+                        m_subcoverage_paths.emplace(l_it->first, l_subtree.file_name()).first;
 
                     // Create the entry in the coverage size map
                     m_subcoverage_sizes.emplace(l_it->first, 0);

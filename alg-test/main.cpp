@@ -4,7 +4,7 @@
 #include <numeric>
 
 size_t boolean_ai::INPUT_CACHE_SIZE = 100000;
-size_t boolean_ai::TREE_CACHE_SIZE = 1000000;
+size_t boolean_ai::TREE_CACHE_SIZE = 10000000;
 
 void test_literal_product_equivalence(
 
@@ -411,6 +411,15 @@ void add_8_bit_numbers_test(
             }
 
             std::vector<bool> l_evaluated = l_sops.evaluate(l_concatenated);
+
+            if (l_evaluated == l_sum_and_carry(l_test_byte_0, l_test_byte_1))
+            {
+                std::cout << "CORRECT" << std::endl;
+            }
+            else
+            {
+                std::cout << "INCORRECT" << std::endl;
+            }
 
             for (const bool& l_bool : l_test_byte_0)
                 std::cout << l_bool << " ";
