@@ -191,8 +191,12 @@ void test_generalize_multi_output(
 
     boolean_ai::sum_of_products_string l_generalized;
 
+    const std::string l_example_solution_name = "example-solution/";
+
+    std::filesystem::remove_all(l_example_solution_name);
+
     {
-        boolean_ai::solution_manager l_solution_manager("example-solution/", 3);
+        boolean_ai::solution_manager l_solution_manager(l_example_solution_name, 3);
 
         l_solution_manager.add_examples(l_raw_examples);
     }
@@ -202,14 +206,17 @@ void test_generalize_multi_output(
     {
         // By constructing another solution_manager object with the same directory,
         // the solution manager will load contents from the folder.
-        boolean_ai::solution_manager l_solution_manager("example-solution/", 3);
+        boolean_ai::solution_manager l_solution_manager(l_example_solution_name, 3);
         
         // This call takes into account all satisfying inputs and ALL unsatisfying inputs.
         l_generalized = l_solution_manager.generalize();
     }
 
-    assert(std::filesystem::exists("example-solution/"));
-    assert(std::filesystem::exists("example-solution/0"));
+    assert(std::filesystem::exists(l_example_solution_name));
+
+    const std::string l_first_bit_folder_name = "example-solution/0";
+
+    assert(std::filesystem::exists(l_first_bit_folder_name));
 
     // There should be three covering products since there are three satisfying inputs for
     // output bit 0.
@@ -278,7 +285,7 @@ void test_generalize_multi_output(
     assert(l_generalized.sums_of_products()[1].literal_products().size() == 3);
     assert(l_generalized.sums_of_products()[2].literal_products().size() == 2);
 
-    std::filesystem::remove_all("example-solution/");
+    std::filesystem::remove_all(l_example_solution_name);
 
 }
 
@@ -445,8 +452,8 @@ int main(
 
 )
 {
-    add_8_bit_numbers_test();
-    //unit_test_main();
+    //add_8_bit_numbers_test();
+    unit_test_main();
 
     return 0;
 

@@ -13,6 +13,7 @@
 #include "cereal/types/map.hpp"
 #include "cereal/types/deque.hpp"
 #include "cereal/types/string.hpp"
+#include <bits/stdc++.h>
 
 namespace cereal
 {
@@ -35,6 +36,39 @@ namespace cereal
         a_archive(l_string);
         a_path = std::filesystem::path(l_string);
     }
+
+    template<typename ARCHIVE, typename T>
+    void save(
+        ARCHIVE& a_archive,
+        const std::list<T>& a_list
+    )
+    {
+        a_archive(a_list.size());
+        for (const auto& l_element : a_list)
+            a_archive(l_element);
+    }
+
+    template<typename ARCHIVE, typename T>
+    void load(
+        ARCHIVE& a_archive,
+        std::list<T>& a_list
+    )
+    {
+        a_list.clear();
+
+        size_t l_list_size = 0;
+        
+        a_archive(l_list_size);
+
+        for (int i = 0; i < l_list_size; i++)
+        {
+            T l_element;
+            a_archive(l_element);
+            a_list.push_back(l_element);
+        }
+
+    }
+
 }
 
 namespace boolean_ai
@@ -380,7 +414,7 @@ namespace boolean_ai
 
     };
 
-    std::map<literal, std::vector<std::filesystem::path>> literal_coverage(
+    std::map<literal, std::vector<std::filesystem::path>> literal_coverages(
         cache<std::filesystem::path, input>& a_cache,
         std::vector<std::filesystem::path>& a_covered_unsatisfying_inputs
     )
@@ -421,12 +455,18 @@ namespace boolean_ai
     class unsatisfying_coverage_tree
     {
     private:
+        // Member variables defined at construction time.
         cache<std::filesystem::path, input>&     m_input_cache;
+
+        // Member variables specific to the local node.
         std::vector<literal>                     m_covering_literals;
-        std::vector<std::filesystem::path>       m_unprocessed_coverage;
         size_t                                   m_coverage_size = 0;
+        std::vector<std::filesystem::path>       m_unprocessed_coverage;
+
+        // Member variables specific to children nodes.
         std::map<literal, size_t>                m_subcoverage_sizes;
-        std::map<literal, std::filesystem::path> m_subcoverage_paths;
+        std::list<literal>                       m_sorted_literals;
+        std::map<literal, std::filesystem::path> m_subtree_paths;
 
     public:
         unsatisfying_coverage_tree(
@@ -481,30 +521,18 @@ namespace boolean_ai
                 propagate_coverage(a_tree_cache);
             }
             
-            std::map<literal, size_t>::iterator l_coverage_minimizing_iterator = m_subcoverage_sizes.end();
-
-            for (auto l_it = m_subcoverage_sizes.begin(); l_it != m_subcoverage_sizes.end(); l_it++)
+            for (auto l_it = m_sorted_literals.begin(); l_it != m_sorted_literals.end(); l_it++)
             {
-                if (l_it == l_coverage_minimizing_iterator)
-                    // Just skip this iteration. The current literal is equal to the literal
-                    // represented by this iteration.
-                    continue;
-
-                // First, check to make sure that the literal exists within
-                // the satisfying input.
-                bool l_literal_exists_within_satisfying_input = 
-                    a_satisfying_input->at(l_it->first.index()) != l_it->first.invert();
-
-                if (l_literal_exists_within_satisfying_input &&
-                    (l_coverage_minimizing_iterator == m_subcoverage_sizes.end() || 
-                    l_it->second < l_coverage_minimizing_iterator->second))
+                // Check if the literal covers the satisfying minterm.
+                if (a_satisfying_input->at(l_it->index()) != l_it->invert())
                 {
-                    l_coverage_minimizing_iterator = l_it;
+                    return m_subtree_paths[*l_it];
                 }
+
             }
 
-            return m_subcoverage_paths[l_coverage_minimizing_iterator->first];
-            
+            throw std::runtime_error("Error: could not find a covering literal.");
+
         }
 
         template<typename ARCHIVE>
@@ -516,7 +544,8 @@ namespace boolean_ai
             a_archive(m_unprocessed_coverage);
             a_archive(m_coverage_size);
             a_archive(m_subcoverage_sizes);
-            a_archive(m_subcoverage_paths);
+            a_archive(m_sorted_literals);
+            a_archive(m_subtree_paths);
         }
 
     private:
@@ -525,7 +554,7 @@ namespace boolean_ai
         )
         {
             // First, get the raw literal coverage.
-            std::map<literal, std::vector<std::filesystem::path>> l_literal_coverage = literal_coverage(
+            std::map<literal, std::vector<std::filesystem::path>> l_literal_coverage = literal_coverages(
                 m_input_cache,
                 m_unprocessed_coverage
             );
@@ -546,15 +575,15 @@ namespace boolean_ai
                     // already was the inverted form of this literal.
                     continue;
 
-                std::vector<literal> l_covering_literals = m_covering_literals;
-
-                l_covering_literals.push_back(l_it->first);
-
-                // Generate subtrees for each literal coverage.
-                std::map<literal, std::filesystem::path>::iterator l_subtree_iterator = m_subcoverage_paths.find(l_it->first);
+                std::map<literal, std::filesystem::path>::iterator l_subtree_iterator = m_subtree_paths.find(l_it->first);
                 
-                if (l_subtree_iterator == m_subcoverage_paths.end())
+                if (l_subtree_iterator == m_subtree_paths.end())
                 {
+                    // Generate subtrees for the literal coverage.
+                    
+                    std::vector<literal> l_covering_literals = m_covering_literals;
+                    l_covering_literals.push_back(l_it->first);
+                    
                     // Create the subtree
                     unsatisfying_coverage_tree l_subtree(
                         m_input_cache, l_covering_literals);
@@ -564,19 +593,49 @@ namespace boolean_ai
 
                     // Insert the subtree path into the list of subtree paths.
                     l_subtree_iterator =
-                        m_subcoverage_paths.emplace(l_it->first, l_subtree.file_name()).first;
-
-                    // Create the entry in the coverage size map
-                    m_subcoverage_sizes.emplace(l_it->first, 0);
+                        m_subtree_paths.emplace(l_it->first, l_subtree.file_name()).first;
 
                 }
 
+                // Retrieve the child node in the tree from LTS.
                 cache<std::filesystem::path, unsatisfying_coverage_tree>::entry l_subtree_entry =
                     a_tree_cache.get(l_subtree_iterator->second);
 
-                m_subcoverage_sizes[l_it->first] += l_it->second.size();
-
+                // Add the coverage to the child node of the tree.
                 l_subtree_entry->add_coverage(l_it->second);
+
+                // Find the entry for this literal in the "m_subcoverage_sizes" map.
+                std::map<literal, size_t>::iterator l_subcoverage_size_iterator = m_subcoverage_sizes.find(l_it->first);
+
+                if (l_subcoverage_size_iterator == m_subcoverage_sizes.end())
+                {
+                    l_subcoverage_size_iterator = m_subcoverage_sizes.emplace(
+                        l_it->first, 0).first;
+                }
+
+                // Add to the coverage size.
+                l_subcoverage_size_iterator->second += l_it->second.size();
+                
+            }
+
+            // Clear the sorted literals, and prepare to resort.
+            m_sorted_literals.clear();
+
+            // Resort the literals by subcoverage size.
+            for (auto l_it = m_subcoverage_sizes.begin(); l_it != m_subcoverage_sizes.end(); l_it++)
+            {
+                std::list<literal>::iterator l_sorted_literals_insertion_position = 
+                    std::upper_bound(
+                        m_sorted_literals.begin(), m_sorted_literals.end(), l_it->first,
+                        [&](const literal& a_entry, const literal& a_value)
+                        {
+                            return m_subcoverage_sizes[a_value] > m_subcoverage_sizes[a_entry];
+                        }
+                    );
+
+                // Insert the literal into the vector sorted by
+                // coverage size.
+                m_sorted_literals.insert(l_sorted_literals_insertion_position, l_it->first);
 
             }
 

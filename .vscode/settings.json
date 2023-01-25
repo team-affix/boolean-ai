@@ -76,6 +76,17 @@
         "cinttypes": "cpp",
         "typeindex": "cpp",
         "valarray": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "barrier": "cpp",
+        "cfenv": "cpp",
+        "charconv": "cpp",
+        "csetjmp": "cpp",
+        "cuchar": "cpp",
+        "latch": "cpp",
+        "ranges": "cpp",
+        "scoped_allocator": "cpp",
+        "shared_mutex": "cpp",
+        "span": "cpp",
+        "syncstream": "cpp"
     }
 }
