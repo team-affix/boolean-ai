@@ -4,7 +4,7 @@
 #include <numeric>
 
 size_t boolean_ai::INPUT_CACHE_SIZE = 100000;
-size_t boolean_ai::TREE_CACHE_SIZE = 10000000;
+size_t boolean_ai::TREE_CACHE_SIZE = 1000000;
 
 void test_literal_product_equivalence(
 
@@ -346,7 +346,7 @@ void add_8_bit_numbers_test(
     if (std::filesystem::exists(l_solution_folder_name))
         std::filesystem::remove_all(l_solution_folder_name);
 
-    for (size_t l_training_sets_count = 10000; l_training_sets_count < 100000; l_training_sets_count += 1000)
+    for (size_t l_training_sets_count = 1000; l_training_sets_count < 100000; l_training_sets_count += 1000)
     {
         std::vector<boolean_ai::raw_example> l_raw_examples;
 
@@ -452,8 +452,8 @@ int main(
 
 )
 {
-    //add_8_bit_numbers_test();
-    unit_test_main();
+    add_8_bit_numbers_test();
+    //unit_test_main();
 
     return 0;
 
